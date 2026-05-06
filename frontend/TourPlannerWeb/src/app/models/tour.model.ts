@@ -7,7 +7,7 @@ export interface Tour {
   to: string;
   transportType: TransportType;
   distance: string;
-  time: string;
+  duration: string;
   rating: number;
   color: string;
 }

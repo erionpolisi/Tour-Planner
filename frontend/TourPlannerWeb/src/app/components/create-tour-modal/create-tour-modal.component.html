@@ -78,13 +78,31 @@
           </div>
           <div>
             <label class="text-xs text-gray-400 mb-1 block">Estimated Time</label>
-            <input
-              type="text"
-              placeholder="e.g. 4h 30m"
-              [value]="vm.form().time"
-              (input)="vm.updateField('time', $any($event.target).value)"
-              class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all"
-            />
+            <div class="flex gap-2 items-center">
+              <div class="flex-1 relative">
+                <input
+                  type="number"
+                  min="0"
+                  max="99"
+                  [value]="getDurationHours(vm.form().duration)"
+                  (input)="vm.updateField('duration', formatDuration(+$any($event.target).value, getDurationMinutes(vm.form().duration)))"
+                  class="w-full px-4 py-3 pr-8 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">h</span>
+              </div>
+              <span class="text-gray-500 font-bold">:</span>
+              <div class="flex-1 relative">
+                <input
+                  type="number"
+                  min="0"
+                  max="59"
+                  [value]="getDurationMinutes(vm.form().duration)"
+                  (input)="vm.updateField('duration', formatDuration(getDurationHours(vm.form().duration), +$any($event.target).value))"
+                  class="w-full px-4 py-3 pr-10 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">min</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

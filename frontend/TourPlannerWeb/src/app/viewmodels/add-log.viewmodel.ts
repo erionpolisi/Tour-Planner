@@ -9,7 +9,7 @@ interface AddLogForm {
   comment: string;
   difficulty: 'easy' | 'medium' | 'hard';
   totalDistance: number;
-  totalTime: string;
+  duration: string;
   rating: number;
 }
 
@@ -48,7 +48,7 @@ export class AddLogViewModel {
     comment: '',
     difficulty: 'medium',
     totalDistance: 0,
-    totalTime: '',
+    duration: '',
     rating: 3,
   });
 
@@ -61,7 +61,7 @@ export class AddLogViewModel {
       comment: '',
       difficulty: 'medium',
       totalDistance: 0,
-      totalTime: '',
+      duration: '',
       rating: 3,
     });
     this.modalService.openAddLog();
@@ -75,7 +75,7 @@ export class AddLogViewModel {
       comment: '',
       difficulty: 'medium',
       totalDistance: 0,
-      totalTime: '',
+      duration: '',
       rating: 3,
     });
     this.modalService.openAddLog();
@@ -110,7 +110,7 @@ export class AddLogViewModel {
       comment: f.comment,
       difficulty: f.difficulty,
       totalDistance: f.totalDistance,
-      totalTime: f.totalTime || '0h 00m',
+      duration: f.duration || '0h 00m',
       rating: f.rating,
     });
     this.modalService.close();

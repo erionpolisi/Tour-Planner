@@ -7,12 +7,12 @@ import { Stat } from '../models/stat.model';
 })
 export class TourService {
   private readonly _tours = signal<Tour[]>([
-    { id: 1, name: 'Alpine Adventure', from: 'Vienna', to: 'Salzburg', transportType: 'driving', distance: '300', time: '4h 30m', rating: 4.5, color: 'from-purple-500 to-pink-500' },
-    { id: 2, name: 'Coastal Route', from: 'Barcelona', to: 'Valencia', transportType: 'cycling', distance: '290', time: '12h 00m', rating: 4.2, color: 'from-cyan-500 to-blue-500' },
-    { id: 3, name: 'Mountain Trail', from: 'Munich', to: 'Innsbruck', transportType: 'walking', distance: '120', time: '26h 00m', rating: 4.8, color: 'from-emerald-500 to-teal-500' },
-    { id: 4, name: 'Historic Cities', from: 'Prague', to: 'Krakow', transportType: 'driving', distance: '540', time: '7h 20m', rating: 4.6, color: 'from-orange-500 to-red-500' },
-    { id: 5, name: 'River Valley', from: 'Lyon', to: 'Geneva', transportType: 'cycling', distance: '145', time: '6h 30m', rating: 4.4, color: 'from-violet-500 to-purple-500' },
-    { id: 6, name: 'Desert Highway', from: 'Phoenix', to: 'Las Vegas', transportType: 'driving', distance: '475', time: '6h 10m', rating: 4.7, color: 'from-amber-500 to-yellow-500' },
+    { id: 1, name: 'Alpine Adventure', from: 'Vienna', to: 'Salzburg', transportType: 'driving', distance: '300', duration: '4h 30m', rating: 4.5, color: 'from-purple-500 to-pink-500' },
+    { id: 2, name: 'Coastal Route', from: 'Barcelona', to: 'Valencia', transportType: 'cycling', distance: '290', duration: '12h 00m', rating: 4.2, color: 'from-cyan-500 to-blue-500' },
+    { id: 3, name: 'Mountain Trail', from: 'Munich', to: 'Innsbruck', transportType: 'walking', distance: '120', duration: '26h 00m', rating: 4.8, color: 'from-emerald-500 to-teal-500' },
+    { id: 4, name: 'Historic Cities', from: 'Prague', to: 'Krakow', transportType: 'driving', distance: '540', duration: '7h 20m', rating: 4.6, color: 'from-orange-500 to-red-500' },
+    { id: 5, name: 'River Valley', from: 'Lyon', to: 'Geneva', transportType: 'cycling', distance: '145', duration: '6h 30m', rating: 4.4, color: 'from-violet-500 to-purple-500' },
+    { id: 6, name: 'Desert Highway', from: 'Phoenix', to: 'Las Vegas', transportType: 'driving', distance: '475', duration: '6h 10m', rating: 4.7, color: 'from-amber-500 to-yellow-500' },
   ]);
 
   readonly transportFilter = signal<TransportType | 'all'>('all');

@@ -9,7 +9,7 @@ interface CreateTourForm {
   to: string;
   transportType: TransportType;
   distance: string;
-  time: string;
+  duration: string;
 }
 
 const TOUR_COLORS = [
@@ -36,11 +36,11 @@ export class CreateTourViewModel {
     to: '',
     transportType: 'driving',
     distance: '',
-    time: '',
+    duration: '',
   });
 
   open(): void {
-    this.form.set({ name: '', from: '', to: '', transportType: 'driving', distance: '', time: '' });
+    this.form.set({ name: '', from: '', to: '', transportType: 'driving', distance: '', duration: '' });
     this.modalService.openCreateTour();
   }
 
@@ -62,7 +62,7 @@ export class CreateTourViewModel {
       to: f.to,
       transportType: f.transportType,
       distance: f.distance || '0',
-      time: f.time || '0h 00m',
+      duration: f.duration || '0h 00m',
       rating: 0,
       color,
     });

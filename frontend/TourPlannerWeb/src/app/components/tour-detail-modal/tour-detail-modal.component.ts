@@ -42,4 +42,18 @@ export class TourDetailModalComponent {
       this.addLogVm.openForTour(tour.id);
     }
   }
+
+  protected getDurationHours(val: string): number {
+    const match = val.match(/(\d+)h/);
+    return match ? +match[1] : 0;
+  }
+
+  protected getDurationMinutes(val: string): number {
+    const match = val.match(/(\d+)m/);
+    return match ? +match[1] : 0;
+  }
+
+  protected formatDuration(hours: number, minutes: number): string {
+    return `${hours}h ${String(minutes).padStart(2, '0')}m`;
+  }
 }

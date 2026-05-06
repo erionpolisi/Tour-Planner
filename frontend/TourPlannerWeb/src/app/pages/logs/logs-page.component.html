@@ -62,7 +62,7 @@
               </div>
               <div class="flex items-center gap-2 text-sm text-gray-400">
                 <lucide-icon [img]="icons.Clock" class="w-4 h-4"></lucide-icon>
-                {{ log.totalTime }}
+                {{ log.duration }}
               </div>
               <div class="flex items-center gap-1">
                 @for (s of vm.getRatingStars(log.rating); track $index) {
