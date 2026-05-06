@@ -10,6 +10,10 @@ import {
   Clock,
 } from 'lucide-angular';
 import { DashboardViewModel } from '../../viewmodels/dashboard.viewmodel';
+import { TourDetailViewModel } from '../../viewmodels/tour-detail.viewmodel';
+import { LogDetailViewModel } from '../../viewmodels/log-detail.viewmodel';
+import { Tour } from '../../models/tour.model';
+import { TourLog } from '../../models/tour-log.model';
 
 @Component({
   selector: 'app-dashboard',
@@ -20,5 +24,15 @@ import { DashboardViewModel } from '../../viewmodels/dashboard.viewmodel';
 })
 export class DashboardComponent {
   protected readonly vm = inject(DashboardViewModel);
+  private readonly tourDetailVm = inject(TourDetailViewModel);
+  private readonly logDetailVm = inject(LogDetailViewModel);
   protected readonly icons = { Map, ArrowRight, MapPin, Star, TrendingUp, Clock };
+
+  onTourClick(tour: Tour): void {
+    this.tourDetailVm.open(tour);
+  }
+
+  onLogClick(log: TourLog): void {
+    this.logDetailVm.open(log);
+  }
 }

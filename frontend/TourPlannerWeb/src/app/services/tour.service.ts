@@ -36,8 +36,18 @@ export class TourService {
     ];
   });
 
+  private _nextId = 7;
+
   deleteTour(id: number): void {
     this._tours.update((tours) => tours.filter((t) => t.id !== id));
+  }
+
+  updateTour(updated: Tour): void {
+    this._tours.update((tours) => tours.map((t) => (t.id === updated.id ? updated : t)));
+  }
+
+  addTour(tour: Omit<Tour, 'id'>): void {
+    this._tours.update((tours) => [...tours, { ...tour, id: this._nextId++ }]);
   }
 
   setTransportFilter(type: TransportType | 'all'): void {

@@ -47,6 +47,10 @@ export class TourLogService {
     this._logs.update((logs) => logs.filter((l) => l.id !== id));
   }
 
+  updateLog(updated: TourLog): void {
+    this._logs.update((logs) => logs.map((l) => (l.id === updated.id ? updated : l)));
+  }
+
   addLog(log: Omit<TourLog, 'id'>): void {
     this._logs.update((logs) => [...logs, { ...log, id: this._nextId++ }]);
   }

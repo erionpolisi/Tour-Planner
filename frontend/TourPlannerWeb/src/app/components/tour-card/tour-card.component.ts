@@ -1,6 +1,7 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, inject } from '@angular/core';
 import { LucideAngularModule, LucideIconData, MapPin, Clock, Star, Edit2, Trash2, Footprints, Bike, Car } from 'lucide-angular';
 import { Tour, TransportType } from '../../models/tour.model';
+import { TourDetailViewModel } from '../../viewmodels/tour-detail.viewmodel';
 
 @Component({
   selector: 'app-tour-card',
@@ -8,6 +9,8 @@ import { Tour, TransportType } from '../../models/tour.model';
   templateUrl: './tour-card.component.html',
 })
 export class TourCardComponent {
+  private readonly tourDetailVm = inject(TourDetailViewModel);
+
   readonly tour = input.required<Tour>();
   readonly delete = output<number>();
 
@@ -19,7 +22,17 @@ export class TourCardComponent {
     driving: Car,
   };
 
-  onDelete(): void {
+  onCardClick(): void {
+    this.tourDetailVm.open(this.tour());
+  }
+
+  onEdit(event: Event): void {
+    event.stopPropagation();
+    this.tourDetailVm.openInEditMode(this.tour());
+  }
+
+  onDelete(event: Event): void {
+    event.stopPropagation();
     this.delete.emit(this.tour().id);
   }
 }
