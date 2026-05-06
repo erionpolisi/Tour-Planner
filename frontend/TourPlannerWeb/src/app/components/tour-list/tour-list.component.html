@@ -1,4 +1,4 @@
-<main class="flex-1 p-8 overflow-auto">
+<main class="flex-1 p-8 overflow-y-auto min-h-0">
   <!-- Header -->
   <div class="flex items-center justify-between mb-8">
     <div>
@@ -13,7 +13,7 @@
 
   <!-- Tours Grid -->
   <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-    @for (tour of tourService.filteredTours(); track tour.id) {
+    @for (tour of vm.filteredTours(); track tour.id) {
       <app-tour-card [tour]="tour" (delete)="onDeleteTour($event)" (transportChange)="onTransportChange($event)"></app-tour-card>
     }
   </div>

@@ -54,24 +54,6 @@ export class TourService {
     ];
   });
 
-  readonly searchQuery = signal('');
-
-  readonly filteredTours = computed(() => {
-    const query = this.searchQuery().toLowerCase();
-    if (!query) return this._tours();
-    return this._tours().filter(
-      (t) =>
-        t.name.toLowerCase().includes(query) ||
-        t.from.toLowerCase().includes(query) ||
-        t.to.toLowerCase().includes(query) ||
-        t.transportType.toLowerCase().includes(query)
-    );
-  });
-
-  search(query: string): void {
-    this.searchQuery.set(query);
-  }
-
   deleteTour(id: number): void {
     this._tours.update((tours) => tours.filter((t) => t.id !== id));
   }

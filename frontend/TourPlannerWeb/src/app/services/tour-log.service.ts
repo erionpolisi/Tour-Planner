@@ -1,4 +1,5 @@
 import { Injectable, signal, computed } from '@angular/core';
+import type { Signal } from '@angular/core';
 import { TourLog } from '../models/tour-log.model';
 
 @Injectable({
@@ -19,20 +20,6 @@ export class TourLogService {
   private _nextId = 9;
 
   readonly logs = this._logs.asReadonly();
-
-  readonly searchQuery = signal('');
-
-  readonly filteredLogs = computed(() => {
-    const query = this.searchQuery().toLowerCase();
-    if (!query) return this._logs();
-    return this._logs().filter(
-      (l) =>
-        l.tourName.toLowerCase().includes(query) ||
-        l.comment.toLowerCase().includes(query) ||
-        l.difficulty.toLowerCase().includes(query) ||
-        l.dateTime.toLowerCase().includes(query)
-    );
-  });
 
   logsForTour(tourId: number) {
     return computed(() => this._logs().filter((l) => l.tourId === tourId));
@@ -55,10 +42,6 @@ export class TourLogService {
     if (!logs.length) return '0';
     return (logs.reduce((sum, l) => sum + l.rating, 0) / logs.length).toFixed(1);
   });
-
-  search(query: string): void {
-    this.searchQuery.set(query);
-  }
 
   deleteLog(id: number): void {
     this._logs.update((logs) => logs.filter((l) => l.id !== id));

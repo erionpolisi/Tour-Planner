@@ -1,5 +1,6 @@
-import { Component, output, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { LucideAngularModule, Map, Search, User } from 'lucide-angular';
+import { SearchService } from '../../services/search.service';
 
 @Component({
   selector: 'app-navbar',
@@ -7,14 +8,12 @@ import { LucideAngularModule, Map, Search, User } from 'lucide-angular';
   templateUrl: './navbar.component.html',
 })
 export class NavbarComponent {
-  readonly searchChange = output<string>();
+  private readonly searchService = inject(SearchService);
 
   protected readonly icons = { Map, Search, User };
-  protected readonly searchValue = signal('');
 
   onSearch(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
-    this.searchValue.set(value);
-    this.searchChange.emit(value);
+    this.searchService.search(value);
   }
 }
