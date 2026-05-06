@@ -8,17 +8,17 @@ export class TourListViewModel {
   private readonly tourService = inject(TourService);
   private readonly searchService = inject(SearchService);
 
-  readonly tours = this.tourService.tours;
+  readonly transportFilter = this.tourService.transportFilter;
 
   readonly filteredTours = computed(() => {
     const query = this.searchService.query().toLowerCase();
-    if (!query) return this.tours();
-    return this.tours().filter(
+    const tours = this.tourService.filteredByTransport();
+    if (!query) return tours;
+    return tours.filter(
       (t) =>
         t.name.toLowerCase().includes(query) ||
         t.from.toLowerCase().includes(query) ||
-        t.to.toLowerCase().includes(query) ||
-        t.transportType.toLowerCase().includes(query)
+        t.to.toLowerCase().includes(query)
     );
   });
 
@@ -26,7 +26,7 @@ export class TourListViewModel {
     this.tourService.deleteTour(id);
   }
 
-  changeTransportType(tourId: number, type: TransportType): void {
-    this.tourService.changeTransportType(tourId, type);
+  setTransportFilter(type: TransportType | 'all'): void {
+    this.tourService.setTransportFilter(type);
   }
 }

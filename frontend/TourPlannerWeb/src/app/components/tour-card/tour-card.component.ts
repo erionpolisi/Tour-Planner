@@ -10,21 +10,16 @@ import { Tour, TransportType } from '../../models/tour.model';
 export class TourCardComponent {
   readonly tour = input.required<Tour>();
   readonly delete = output<number>();
-  readonly transportChange = output<{ tourId: number; type: TransportType }>();
 
   protected readonly icons = { MapPin, Clock, Star, Edit2, Trash2, Footprints, Bike, Car };
 
-  protected readonly transportTypes: { type: TransportType; icon: LucideIconData; label: string }[] = [
-    { type: 'walking', icon: Footprints, label: 'Walk' },
-    { type: 'cycling', icon: Bike, label: 'Bike' },
-    { type: 'driving', icon: Car, label: 'Drive' },
-  ];
+  protected readonly transportIcons: Record<TransportType, LucideIconData> = {
+    walking: Footprints,
+    cycling: Bike,
+    driving: Car,
+  };
 
   onDelete(): void {
     this.delete.emit(this.tour().id);
-  }
-
-  onTransportChange(type: TransportType): void {
-    this.transportChange.emit({ tourId: this.tour().id, type });
   }
 }

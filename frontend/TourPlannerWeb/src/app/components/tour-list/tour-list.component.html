@@ -1,6 +1,6 @@
 <main class="flex-1 p-8 overflow-y-auto min-h-0">
   <!-- Header -->
-  <div class="flex items-center justify-between mb-8">
+  <div class="flex items-center justify-between mb-6">
     <div>
       <h2 class="text-3xl font-bold text-white mb-1">Your Tours</h2>
       <p class="text-gray-400">Manage and explore your travel routes</p>
@@ -11,10 +11,28 @@
     </button>
   </div>
 
+  <!-- Global Transport Mode Switcher -->
+  <div class="flex items-center gap-3 mb-8">
+    <span class="text-sm text-gray-400 font-medium">Filter:</span>
+    <div class="flex gap-1 p-1 rounded-xl bg-white/5 border border-white/10">
+      @for (mode of transportModes; track mode.type) {
+        <button
+          (click)="onTransportFilter(mode.type)"
+          [class]="vm.transportFilter() === mode.type
+            ? 'flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500/30 to-pink-500/30 border border-purple-500/40 text-white text-sm font-medium transition-all'
+            : 'flex items-center gap-2 px-4 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-all'"
+        >
+          <lucide-icon [img]="mode.icon" class="w-4 h-4"></lucide-icon>
+          {{ mode.label }}
+        </button>
+      }
+    </div>
+  </div>
+
   <!-- Tours Grid -->
   <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
     @for (tour of vm.filteredTours(); track tour.id) {
-      <app-tour-card [tour]="tour" (delete)="onDeleteTour($event)" (transportChange)="onTransportChange($event)"></app-tour-card>
+      <app-tour-card [tour]="tour" (delete)="onDeleteTour($event)"></app-tour-card>
     }
   </div>
 </main>
