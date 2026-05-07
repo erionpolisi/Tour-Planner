@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
-import { LucideAngularModule, Plus, Footprints, Bike, Car, LayoutGrid, LucideIconData } from 'lucide-angular';
+import { LucideAngularModule, Plus, Footprints, Bike, Car, LayoutGrid, LucideIconData, CircleCheck, CalendarClock, ListFilter } from 'lucide-angular';
 import { TourCardComponent } from '../tour-card/tour-card.component';
-import { TransportType } from '../../models/tour.model';
+import { TransportType, TourStatus } from '../../models/tour.model';
 import { TourListViewModel } from '../../viewmodels/tour-list.viewmodel';
 import { CreateTourViewModel } from '../../viewmodels/create-tour.viewmodel';
 
@@ -13,13 +13,19 @@ import { CreateTourViewModel } from '../../viewmodels/create-tour.viewmodel';
 export class TourListComponent {
   protected readonly vm = inject(TourListViewModel);
   private readonly createTourVm = inject(CreateTourViewModel);
-  protected readonly icons = { Plus, Footprints, Bike, Car, LayoutGrid };
+  protected readonly icons = { Plus, Footprints, Bike, Car, LayoutGrid, CircleCheck, CalendarClock, ListFilter };
 
   protected readonly transportModes: { type: TransportType | 'all'; icon: LucideIconData; label: string }[] = [
     { type: 'all', icon: LayoutGrid, label: 'All' },
     { type: 'walking', icon: Footprints, label: 'Walking' },
     { type: 'cycling', icon: Bike, label: 'Cycling' },
     { type: 'driving', icon: Car, label: 'Driving' },
+  ];
+
+  protected readonly statusModes: { type: TourStatus | 'all'; icon: LucideIconData; label: string }[] = [
+    { type: 'all', icon: ListFilter, label: 'All' },
+    { type: 'planned', icon: CalendarClock, label: 'Planned' },
+    { type: 'completed', icon: CircleCheck, label: 'Completed' },
   ];
 
   onCreateTour(): void {
@@ -32,5 +38,9 @@ export class TourListComponent {
 
   onTransportFilter(type: TransportType | 'all'): void {
     this.vm.setTransportFilter(type);
+  }
+
+  onStatusFilter(status: TourStatus | 'all'): void {
+    this.vm.setStatusFilter(status);
   }
 }

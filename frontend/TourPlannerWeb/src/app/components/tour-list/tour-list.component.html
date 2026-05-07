@@ -11,21 +11,42 @@
     </button>
   </div>
 
-  <!-- Global Transport Mode Switcher -->
-  <div class="flex items-center gap-3 mb-8">
-    <span class="text-sm text-gray-400 font-medium">Filter:</span>
-    <div class="flex gap-1 p-1 rounded-xl bg-white/5 border border-white/10">
-      @for (mode of transportModes; track mode.type) {
-        <button
-          (click)="onTransportFilter(mode.type)"
-          [class]="vm.transportFilter() === mode.type
-            ? 'flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500/30 to-pink-500/30 border border-purple-500/40 text-white text-sm font-medium transition-all'
-            : 'flex items-center gap-2 px-4 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-all'"
-        >
-          <lucide-icon [img]="mode.icon" class="w-4 h-4"></lucide-icon>
-          {{ mode.label }}
-        </button>
-      }
+  <!-- Filters -->
+  <div class="flex items-center gap-6 mb-8 flex-wrap">
+    <!-- Transport Mode Filter -->
+    <div class="flex items-center gap-3">
+      <span class="text-sm text-gray-400 font-medium">Transport:</span>
+      <div class="flex gap-1 p-1 rounded-xl bg-white/5 border border-white/10">
+        @for (mode of transportModes; track mode.type) {
+          <button
+            (click)="onTransportFilter(mode.type)"
+            [class]="vm.transportFilter() === mode.type
+              ? 'flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500/30 to-pink-500/30 border border-purple-500/40 text-white text-sm font-medium transition-all'
+              : 'flex items-center gap-2 px-4 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-all'"
+          >
+            <lucide-icon [img]="mode.icon" class="w-4 h-4"></lucide-icon>
+            {{ mode.label }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Status Filter -->
+    <div class="flex items-center gap-3">
+      <span class="text-sm text-gray-400 font-medium">Status:</span>
+      <div class="flex gap-1 p-1 rounded-xl bg-white/5 border border-white/10">
+        @for (mode of statusModes; track mode.type) {
+          <button
+            (click)="onStatusFilter(mode.type)"
+            [class]="vm.statusFilter() === mode.type
+              ? 'flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500/30 to-pink-500/30 border border-purple-500/40 text-white text-sm font-medium transition-all'
+              : 'flex items-center gap-2 px-4 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-all'"
+          >
+            <lucide-icon [img]="mode.icon" class="w-4 h-4"></lucide-icon>
+            {{ mode.label }}
+          </button>
+        }
+      </div>
     </div>
   </div>
 

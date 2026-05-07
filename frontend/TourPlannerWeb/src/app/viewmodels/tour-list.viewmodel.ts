@@ -1,7 +1,7 @@
 import { Injectable, inject, computed } from '@angular/core';
 import { TourService } from '../services/tour.service';
 import { SearchService } from '../services/search.service';
-import { TransportType } from '../models/tour.model';
+import { TransportType, TourStatus } from '../models/tour.model';
 
 @Injectable()
 export class TourListViewModel {
@@ -9,6 +9,7 @@ export class TourListViewModel {
   private readonly searchService = inject(SearchService);
 
   readonly transportFilter = this.tourService.transportFilter;
+  readonly statusFilter = this.tourService.statusFilter;
 
   readonly filteredTours = computed(() => {
     const query = this.searchService.query().toLowerCase();
@@ -28,5 +29,9 @@ export class TourListViewModel {
 
   setTransportFilter(type: TransportType | 'all'): void {
     this.tourService.setTransportFilter(type);
+  }
+
+  setStatusFilter(status: TourStatus | 'all'): void {
+    this.tourService.setStatusFilter(status);
   }
 }

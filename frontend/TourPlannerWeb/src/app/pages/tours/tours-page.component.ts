@@ -15,5 +15,6 @@ export class ToursPageComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.tourService.setTransportFilter('all');
+    this.tourService.setStatusFilter('all');
   }
 }

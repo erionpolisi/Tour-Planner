@@ -4,7 +4,6 @@ import {
   X,
   MapPin,
   Clock,
-  Star,
   Edit2,
   Save,
   Plus,
@@ -12,6 +11,10 @@ import {
   Bike,
   Car,
   LucideIconData,
+  CircleCheck,
+  CalendarClock,
+  Trophy,
+  PartyPopper,
 } from 'lucide-angular';
 import { TourDetailViewModel } from '../../viewmodels/tour-detail.viewmodel';
 import { AddLogViewModel } from '../../viewmodels/add-log.viewmodel';
@@ -26,7 +29,7 @@ import { TransportType } from '../../models/tour.model';
 export class TourDetailModalComponent {
   protected readonly vm = inject(TourDetailViewModel);
   private readonly addLogVm = inject(AddLogViewModel);
-  protected readonly icons = { X, MapPin, Clock, Star, Edit2, Save, Plus, Footprints, Bike, Car };
+  protected readonly icons = { X, MapPin, Clock, Edit2, Save, Plus, Footprints, Bike, Car, CircleCheck, CalendarClock, Trophy, PartyPopper };
 
   protected readonly transportIcons: Record<TransportType, LucideIconData> = {
     walking: Footprints,

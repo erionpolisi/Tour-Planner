@@ -7,7 +7,6 @@ import {
   Map,
   ScrollText,
   TrendingUp,
-  Star,
   Activity,
 } from 'lucide-angular';
 import { TourService } from '../../services/tour.service';
@@ -31,7 +30,6 @@ export class SidebarComponent {
   protected readonly statIcons: Record<string, LucideIconData> = {
     'map': Map,
     'trending-up': TrendingUp,
-    'star': Star,
     'activity': Activity,
   };
 

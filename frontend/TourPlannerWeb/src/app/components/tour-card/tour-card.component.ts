@@ -1,5 +1,5 @@
 import { Component, input, output, inject } from '@angular/core';
-import { LucideAngularModule, LucideIconData, MapPin, Clock, Star, Edit2, Trash2, Footprints, Bike, Car } from 'lucide-angular';
+import { LucideAngularModule, LucideIconData, MapPin, Clock, Edit2, Trash2, Footprints, Bike, Car, CircleCheck, CalendarClock } from 'lucide-angular';
 import { Tour, TransportType } from '../../models/tour.model';
 import { TourDetailViewModel } from '../../viewmodels/tour-detail.viewmodel';
 
@@ -14,7 +14,7 @@ export class TourCardComponent {
   readonly tour = input.required<Tour>();
   readonly delete = output<number>();
 
-  protected readonly icons = { MapPin, Clock, Star, Edit2, Trash2, Footprints, Bike, Car };
+  protected readonly icons = { MapPin, Clock, Edit2, Trash2, Footprints, Bike, Car, CircleCheck, CalendarClock };
 
   protected readonly transportIcons: Record<TransportType, LucideIconData> = {
     walking: Footprints,

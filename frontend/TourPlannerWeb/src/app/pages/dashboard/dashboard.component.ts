@@ -5,9 +5,9 @@ import {
   Map,
   ArrowRight,
   MapPin,
-  Star,
   TrendingUp,
   Clock,
+  CalendarClock,
 } from 'lucide-angular';
 import { DashboardViewModel } from '../../viewmodels/dashboard.viewmodel';
 import { TourDetailViewModel } from '../../viewmodels/tour-detail.viewmodel';
@@ -26,7 +26,7 @@ export class DashboardComponent {
   protected readonly vm = inject(DashboardViewModel);
   private readonly tourDetailVm = inject(TourDetailViewModel);
   private readonly logDetailVm = inject(LogDetailViewModel);
-  protected readonly icons = { Map, ArrowRight, MapPin, Star, TrendingUp, Clock };
+  protected readonly icons = { Map, ArrowRight, MapPin, TrendingUp, Clock, CalendarClock };
 
   onTourClick(tour: Tour): void {
     this.tourDetailVm.open(tour);

@@ -63,7 +63,7 @@ export class CreateTourViewModel {
       transportType: f.transportType,
       distance: f.distance || '0',
       duration: f.duration || '0h 00m',
-      rating: 0,
+      status: 'planned',
       color,
     });
     this.modalService.close();

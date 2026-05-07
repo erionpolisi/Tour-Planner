@@ -7,10 +7,8 @@ export class DashboardViewModel {
   private readonly tourService = inject(TourService);
   private readonly tourLogService = inject(TourLogService);
 
-  readonly topTours = computed(() => {
-    return [...this.tourService.tours()]
-      .sort((a, b) => b.rating - a.rating)
-      .slice(0, 5);
+  readonly plannedTours = computed(() => {
+    return this.tourService.tours().filter((t) => t.status === 'planned');
   });
 
   readonly recentLogs = computed(() => {

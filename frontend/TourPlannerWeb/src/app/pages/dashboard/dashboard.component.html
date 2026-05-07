@@ -6,17 +6,17 @@
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- Top Rated Tours -->
+    <!-- Planned Tours -->
     <div class="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
       <div class="flex items-center justify-between mb-5">
-        <h3 class="text-lg font-bold text-white">Top Rated Tours</h3>
+        <h3 class="text-lg font-bold text-white">Planned Tours</h3>
         <a routerLink="/tours" class="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors">
           View all
           <lucide-icon [img]="icons.ArrowRight" class="w-4 h-4"></lucide-icon>
         </a>
       </div>
       <div class="space-y-3">
-        @for (tour of vm.topTours(); track tour.id) {
+        @for (tour of vm.plannedTours(); track tour.id) {
           <div (click)="onTourClick(tour)" class="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center justify-between cursor-pointer">
             <div class="flex items-center gap-4">
               <div class="w-10 h-10 rounded-lg bg-gradient-to-br flex items-center justify-center"
@@ -31,11 +31,17 @@
                 </div>
               </div>
             </div>
-            <div class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-yellow-500/20 border border-yellow-500/30">
-              <lucide-icon [img]="icons.Star" class="w-4 h-4 text-yellow-400"></lucide-icon>
-              <span class="text-sm font-semibold text-yellow-400">{{ tour.rating }}</span>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-500">est. {{ tour.duration }}</span>
+              <div class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-500/30">
+                <lucide-icon [img]="icons.CalendarClock" class="w-4 h-4 text-amber-400"></lucide-icon>
+                <span class="text-sm font-semibold text-amber-400">Planned</span>
+              </div>
             </div>
           </div>
+        }
+        @if (vm.plannedTours().length === 0) {
+          <div class="text-center py-8 text-gray-500 text-sm">No planned tours</div>
         }
       </div>
     </div>

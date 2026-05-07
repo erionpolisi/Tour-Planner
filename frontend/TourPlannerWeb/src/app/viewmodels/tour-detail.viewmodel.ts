@@ -13,8 +13,10 @@ export class TourDetailViewModel {
   readonly tour = this.modalService.activeTour;
   readonly editMode = this.modalService.editMode;
   readonly editForm = signal<Partial<Tour>>({});
+  readonly justCompleted = signal(false);
 
   open(tour: Tour): void {
+    this.justCompleted.set(false);
     this.modalService.openTourDetail(tour);
   }
 
@@ -44,6 +46,14 @@ export class TourDetailViewModel {
     if (form.id) {
       this.tourService.updateTour(form as Tour);
       this.modalService.close();
+    }
+  }
+
+  completeTour(): void {
+    const t = this.tour();
+    if (t && t.status === 'planned') {
+      this.tourService.completeTour(t.id);
+      this.justCompleted.set(true);
     }
   }
 }

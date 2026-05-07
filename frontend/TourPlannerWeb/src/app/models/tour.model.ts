@@ -1,4 +1,5 @@
 export type TransportType = 'walking' | 'cycling' | 'driving';
+export type TourStatus = 'planned' | 'completed';
 
 export interface Tour {
   id: number;
@@ -8,6 +9,6 @@ export interface Tour {
   transportType: TransportType;
   distance: string;
   duration: string;
-  rating: number;
+  status: TourStatus;
   color: string;
 }
