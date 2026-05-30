@@ -1,12 +1,50 @@
-<div
-  [class]="fullscreen()
-    ? 'fixed inset-0 z-[100] bg-gray-900 flex flex-col'
-    : 'relative rounded-xl overflow-hidden border border-white/10 bg-white/5 flex flex-col'"
->
+<!-- ───────── inline / small view ───────── -->
+<div class="relative rounded-xl overflow-hidden border border-white/10 bg-white/5 flex flex-col">
   <div class="flex items-center justify-between px-3 py-2 bg-white/5 border-b border-white/10 text-xs">
     @if (editable()) {
-      <div class="flex items-center gap-2">
-        <span class="text-gray-400 hidden sm:inline">Click map to set:</span>
+      <span class="text-gray-400">Click the map to open & pick locations</span>
+    } @else {
+      <span class="text-gray-400">Route preview</span>
+    }
+    <button
+      type="button"
+      (click)="enterFullscreen()"
+      class="px-2 py-1 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1.5"
+      title="Open fullscreen map"
+    >
+      <lucide-icon [img]="icons.Maximize2" class="w-4 h-4"></lucide-icon>
+      <span class="hidden sm:inline">Expand</span>
+    </button>
+  </div>
+  <!-- Slot the map lives in while inline -->
+  <div #inlineSlot class="w-full h-80 relative">
+    <!-- The single, real Leaflet container. Moved to fullscreen slot at runtime. -->
+    <div #mapEl class="absolute inset-0"></div>
+  </div>
+</div>
+
+<!-- ───────── fullscreen overlay ───────── -->
+@if (fullscreen()) {
+  <div class="fixed inset-0 z-[9999] bg-gray-950">
+    <!-- Map portal target -->
+    <div #fullscreenSlot class="absolute inset-0"></div>
+
+    <!-- Close button: grey by default, GREEN once both markers are set -->
+    <button
+      type="button"
+      (click)="exitFullscreen()"
+      [title]="bothMarkersSet() ? 'Done — close map' : 'Close map'"
+      [class]="bothMarkersSet()
+        ? 'absolute top-4 right-4 z-[2] w-12 h-12 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white shadow-2xl shadow-emerald-500/50 flex items-center justify-center transition-all hover:scale-110 ring-4 ring-emerald-500/30'
+        : 'absolute top-4 right-4 z-[2] w-12 h-12 rounded-full bg-gray-700/90 hover:bg-gray-600 text-white shadow-2xl flex items-center justify-center transition-all hover:scale-110'"
+    >
+      <lucide-icon [img]="icons.X" class="w-6 h-6"></lucide-icon>
+    </button>
+
+    @if (editable()) {
+      <!-- Marker toggle (top-left) -->
+      <div class="absolute top-4 left-4 z-[2] flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-900/90 border border-white/15 shadow-2xl backdrop-blur-sm">
+        <span class="text-xs text-gray-400 hidden sm:inline">Place:</span>
         <div class="flex gap-1 p-1 rounded-lg bg-white/5 border border-white/10">
           <button
             type="button"
@@ -24,58 +62,44 @@
           >To</button>
         </div>
       </div>
-    } @else {
-      <span class="text-gray-400">Route Preview</span>
-    }
-    <button
-      type="button"
-      (click)="toggleFullscreen()"
-      class="px-2 py-1 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1.5"
-      [title]="fullscreen() ? 'Exit fullscreen' : 'Open fullscreen'"
-    >
-      <lucide-icon [img]="fullscreen() ? icons.Minimize2 : icons.Maximize2" class="w-4 h-4"></lucide-icon>
-      <span class="hidden sm:inline">{{ fullscreen() ? 'Close' : 'Expand' }}</span>
-    </button>
-  </div>
-  <div
-    #mapContainer
-    [class]="fullscreen() ? 'w-full flex-1 relative' : 'w-full h-80'"
-  ></div>
-  @if (fullscreen() && editable()) {
-    <div class="absolute top-16 left-1/2 -translate-x-1/2 z-[1000] w-[min(90vw,32rem)]">
-      <div class="flex gap-2 p-2 rounded-xl bg-gray-900/95 border border-white/15 shadow-2xl backdrop-blur-sm">
-        <div class="relative flex-1">
-          <lucide-icon [img]="icons.Search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></lucide-icon>
-          <input
-            type="text"
-            placeholder="Search a place (city, address, POI)…"
-            [value]="searchQuery()"
-            (input)="searchQuery.set($any($event.target).value)"
-            (keydown.enter)="runSearch()"
-            class="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/50 text-sm"
-          />
+
+      <!-- Search bar (top-center) -->
+      <div class="absolute top-20 left-1/2 -translate-x-1/2 z-[2] w-[min(92vw,34rem)]">
+        <div class="p-2 rounded-xl bg-gray-900/95 border border-white/15 shadow-2xl backdrop-blur-sm">
+          <div class="relative">
+            <lucide-icon
+              [img]="icons.Search"
+              class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+            ></lucide-icon>
+            <input
+              type="text"
+              placeholder="Search a place (city, address, POI)…"
+              [value]="searchQuery()"
+              (input)="onSearchInput($any($event.target).value)"
+              class="w-full pl-12 pr-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/50 text-sm"
+            />
+            @if (searching()) {
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-gray-400">searching…</span>
+            }
+          </div>
         </div>
-        <button
-          type="button"
-          (click)="runSearch()"
-          [disabled]="searching()"
-          class="px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold hover:shadow-lg hover:shadow-purple-500/40 transition-all disabled:opacity-50"
-        >{{ searching() ? '…' : 'Search' }}</button>
+        @if (searchResults().length > 0) {
+          <div class="mt-2 rounded-xl bg-gray-900/95 border border-white/15 shadow-2xl backdrop-blur-sm max-h-80 overflow-y-auto">
+            @for (r of searchResults(); track r.displayName) {
+              <button
+                type="button"
+                (click)="selectSearchResult(r)"
+                class="w-full text-left px-4 py-3 text-sm text-gray-200 hover:bg-white/10 border-b border-white/5 last:border-0 transition-all"
+              >
+                <div class="text-[11px] text-gray-500 mb-0.5">
+                  Set as <span class="text-purple-300 font-semibold">{{ activeMarker() }}</span>
+                </div>
+                {{ r.displayName }}
+              </button>
+            }
+          </div>
+        }
       </div>
-      @if (searchResults().length > 0) {
-        <div class="mt-2 rounded-xl bg-gray-900/95 border border-white/15 shadow-2xl backdrop-blur-sm max-h-72 overflow-y-auto">
-          @for (r of searchResults(); track r.displayName) {
-            <button
-              type="button"
-              (click)="selectSearchResult(r)"
-              class="w-full text-left px-4 py-3 text-sm text-gray-200 hover:bg-white/10 border-b border-white/5 last:border-0 transition-all"
-            >
-              <div class="text-xs text-gray-500 mb-0.5">Set as <span class="text-purple-300 font-semibold">{{ activeMarker() }}</span></div>
-              {{ r.displayName }}
-            </button>
-          }
-        </div>
-      }
-    </div>
-  }
-</div>
+    }
+  </div>
+}

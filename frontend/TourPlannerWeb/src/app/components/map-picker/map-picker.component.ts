@@ -5,11 +5,12 @@ import {
   input,
   output,
   signal,
+  computed,
   effect,
   afterNextRender,
   OnDestroy,
 } from '@angular/core';
-import { LucideAngularModule, Maximize2, Minimize2, Search } from 'lucide-angular';
+import { LucideAngularModule, Maximize2, X, Search } from 'lucide-angular';
 import type * as L from 'leaflet';
 import { TransportType } from '../../models/tour.model';
 
@@ -32,7 +33,8 @@ const DEFAULT_ZOOM = 4;
 
 const ICON_BASE = 'https://unpkg.com/leaflet@1.9.4/dist/images/';
 
-// OSRM profiles served by routing.openstreetmap.de — no API key needed
+// OSRM profiles served by routing.openstreetmap.de — no API key needed.
+// Routes are real per-transport (foot/bike avoid motorways automatically).
 const OSRM_PROFILES: Record<TransportType, string> = {
   driving: 'routed-car',
   cycling: 'routed-bike',
@@ -60,9 +62,14 @@ export class MapPickerComponent implements OnDestroy {
   protected readonly searchQuery = signal<string>('');
   protected readonly searchResults = signal<SearchResult[]>([]);
   protected readonly searching = signal<boolean>(false);
-  protected readonly icons = { Maximize2, Minimize2, Search };
+  protected readonly icons = { Maximize2, X, Search };
 
-  @ViewChild('mapContainer', { static: true }) mapContainer!: ElementRef<HTMLDivElement>;
+  /** Green close button as soon as both markers are set. */
+  protected readonly bothMarkersSet = computed(() => !!this.from() && !!this.to());
+
+  @ViewChild('mapEl', { static: true }) mapEl!: ElementRef<HTMLDivElement>;
+  @ViewChild('inlineSlot', { static: true }) inlineSlot!: ElementRef<HTMLDivElement>;
+  @ViewChild('fullscreenSlot', { static: false }) fullscreenSlot?: ElementRef<HTMLDivElement>;
 
   private map: L.Map | null = null;
   private leaflet: typeof L | null = null;
@@ -74,16 +81,16 @@ export class MapPickerComponent implements OnDestroy {
   private lastGeocodedFrom = '';
   private lastGeocodedTo = '';
   private lastRouteKey = '';
+  private searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
-    afterNextRender(() => {
-      void this.initMap();
-    });
+    afterNextRender(() => void this.initMap());
 
+    // Geocode external from/to changes back to markers.
     effect(() => {
       const f = this.from();
       const t = this.to();
-      if (!this.map || !this.leaflet) return;
+      if (!this.map) return;
       if (f && f !== this.lastGeocodedFrom) {
         this.lastGeocodedFrom = f;
         void this.geocodeAndPlace(f, 'from');
@@ -94,7 +101,7 @@ export class MapPickerComponent implements OnDestroy {
       }
     });
 
-    // Recompute route when transport type changes
+    // Recompute route on transport-type change.
     effect(() => {
       this.transportType();
       this.lastRouteKey = '';
@@ -103,36 +110,71 @@ export class MapPickerComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.map) {
-      this.map.remove();
-      this.map = null;
-    }
+    if (this.searchDebounce) clearTimeout(this.searchDebounce);
+    this.map?.remove();
+    this.map = null;
   }
+
+  // ──────────── UI state ────────────
 
   protected setActive(target: ActiveMarker): void {
     this.activeMarker.set(target);
   }
 
-  protected toggleFullscreen(): void {
-    this.fullscreen.update((v) => !v);
-    if (!this.fullscreen()) {
-      this.searchResults.set([]);
-      this.searchQuery.set('');
-    }
-    // Leaflet needs to be told that container size changed
-    setTimeout(() => this.map?.invalidateSize(), 50);
+  protected enterFullscreen(): void {
+    if (this.fullscreen()) return;
+    this.fullscreen.set(true);
+    document.body.style.overflow = 'hidden';
+    // Wait for the overlay (and its #fullscreenSlot) to be created in the DOM,
+    // then portal the real map container into it.
+    requestAnimationFrame(() => {
+      const slot = this.fullscreenSlot?.nativeElement;
+      const map = this.mapEl?.nativeElement;
+      if (slot && map) slot.appendChild(map);
+      this.scheduleInvalidate();
+    });
   }
 
-  protected async runSearch(): Promise<void> {
-    const q = this.searchQuery().trim();
-    if (!q) {
+  protected exitFullscreen(): void {
+    if (!this.fullscreen()) return;
+    // Move the real map back into the inline slot BEFORE the overlay is removed.
+    const inline = this.inlineSlot?.nativeElement;
+    const map = this.mapEl?.nativeElement;
+    if (inline && map) inline.appendChild(map);
+    this.fullscreen.set(false);
+    document.body.style.overflow = '';
+    this.searchQuery.set('');
+    this.searchResults.set([]);
+    this.scheduleInvalidate();
+  }
+
+  /** Leaflet must be told that its container resized; call across a few frames. */
+  private scheduleInvalidate(): void {
+    const ticks = [0, 60, 200];
+    ticks.forEach((t) => setTimeout(() => this.map?.invalidateSize(), t));
+  }
+
+  // ──────────── Search ────────────
+
+  protected onSearchInput(value: string): void {
+    this.searchQuery.set(value);
+    if (this.searchDebounce) clearTimeout(this.searchDebounce);
+
+    const q = value.trim();
+    if (q.length < 2) {
       this.searchResults.set([]);
+      this.searching.set(false);
       return;
     }
+
     this.searching.set(true);
+    this.searchDebounce = setTimeout(() => void this.fetchSuggestions(q), 250);
+  }
+
+  private async fetchSuggestions(q: string): Promise<void> {
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`,
+        `https://nominatim.openstreetmap.org/search?format=json&limit=6&addressdetails=0&q=${encodeURIComponent(q)}`,
         { headers: { Accept: 'application/json' } }
       );
       if (!res.ok) {
@@ -154,28 +196,29 @@ export class MapPickerComponent implements OnDestroy {
     }
   }
 
-  protected async selectSearchResult(r: SearchResult): Promise<void> {
+  protected selectSearchResult(r: SearchResult): void {
     const target = this.activeMarker();
     this.placeMarker(target, r.lat, r.lng);
-    const address = await this.reverseGeocode(r.lat, r.lng);
     if (target === 'from') {
-      this.lastGeocodedFrom = address;
-      this.fromChange.emit(address);
+      this.lastGeocodedFrom = r.displayName;
+      this.fromChange.emit(r.displayName);
       this.activeMarker.set('to');
     } else {
-      this.lastGeocodedTo = address;
-      this.toChange.emit(address);
+      this.lastGeocodedTo = r.displayName;
+      this.toChange.emit(r.displayName);
     }
     this.searchResults.set([]);
     this.searchQuery.set('');
     void this.recomputeRouteIfReady();
   }
 
+  // ──────────── Leaflet ────────────
+
   private async initMap(): Promise<void> {
     const L = await import('leaflet');
     this.leaflet = L;
 
-    const map = L.map(this.mapContainer.nativeElement, {
+    const map = L.map(this.mapEl.nativeElement, {
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
       zoomControl: true,
@@ -190,10 +233,16 @@ export class MapPickerComponent implements OnDestroy {
 
     if (this.editable()) {
       map.on('click', (ev: L.LeafletMouseEvent) => {
+        // Small map: a click only opens fullscreen so the user can pick precisely.
+        if (!this.fullscreen()) {
+          this.enterFullscreen();
+          return;
+        }
         void this.handleMapClick(ev.latlng.lat, ev.latlng.lng);
       });
     }
 
+    // Place initial markers when from/to are already provided.
     const f = this.from();
     const t = this.to();
     if (f) {
@@ -205,7 +254,7 @@ export class MapPickerComponent implements OnDestroy {
       void this.geocodeAndPlace(t, 'to');
     }
 
-    setTimeout(() => map.invalidateSize(), 0);
+    this.scheduleInvalidate();
   }
 
   private async handleMapClick(lat: number, lng: number): Promise<void> {
@@ -238,18 +287,13 @@ export class MapPickerComponent implements OnDestroy {
 
     if (target === 'from') {
       if (this.fromMarker) this.map.removeLayer(this.fromMarker);
-      this.fromMarker = L.marker([lat, lng], { icon, title: 'From' })
-        .addTo(this.map)
-        .bindPopup('From');
+      this.fromMarker = L.marker([lat, lng], { icon, title: 'From' }).addTo(this.map).bindPopup('From');
       this.fromCoords = [lat, lng];
     } else {
       if (this.toMarker) this.map.removeLayer(this.toMarker);
-      this.toMarker = L.marker([lat, lng], { icon, title: 'To' })
-        .addTo(this.map)
-        .bindPopup('To');
+      this.toMarker = L.marker([lat, lng], { icon, title: 'To' }).addTo(this.map).bindPopup('To');
       this.toCoords = [lat, lng];
     }
-
     this.fitToMarkers();
   }
 
@@ -259,9 +303,9 @@ export class MapPickerComponent implements OnDestroy {
     if (this.fromCoords) coords.push(this.fromCoords);
     if (this.toCoords) coords.push(this.toCoords);
     if (coords.length === 2) {
-      this.map.fitBounds(this.leaflet.latLngBounds(coords), { padding: [40, 40], maxZoom: 12 });
+      this.map.fitBounds(this.leaflet.latLngBounds(coords), { padding: [50, 50], maxZoom: 12 });
     } else if (coords.length === 1) {
-      this.map.setView(coords[0], 8);
+      this.map.setView(coords[0], 9);
     }
   }
 
@@ -274,8 +318,7 @@ export class MapPickerComponent implements OnDestroy {
     try {
       const [lat1, lng1] = this.fromCoords;
       const [lat2, lng2] = this.toCoords;
-      const transport = this.transportType();
-      const profile = OSRM_PROFILES[transport];
+      const profile = OSRM_PROFILES[this.transportType()];
       const url = `https://routing.openstreetmap.de/${profile}/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`;
       const res = await fetch(url, { headers: { Accept: 'application/json' } });
       if (!res.ok) {
@@ -295,17 +338,13 @@ export class MapPickerComponent implements OnDestroy {
         return;
       }
 
-      const distanceKm = route.distance / 1000;
+      const distanceKm = Math.round((route.distance / 1000) * 10) / 10;
       const durationMinutes = Math.round(route.duration / 60);
       const durationStr = this.formatDuration(durationMinutes);
 
       this.drawRouteLine(route.geometry?.coordinates ?? null);
 
-      this.routeCalculated.emit({
-        distanceKm: Math.round(distanceKm * 10) / 10,
-        durationStr,
-        durationMinutes,
-      });
+      this.routeCalculated.emit({ distanceKm, durationStr, durationMinutes });
     } catch {
       this.drawStraightLine();
     }
@@ -318,12 +357,12 @@ export class MapPickerComponent implements OnDestroy {
       this.routeLine = null;
     }
     if (coords && coords.length > 1) {
-      // OSRM returns [lng, lat]; Leaflet wants [lat, lng]
+      // OSRM: [lng, lat] → Leaflet: [lat, lng]
       const latlngs: [number, number][] = coords.map(([lng, lat]) => [lat, lng]);
       this.routeLine = this.leaflet
         .polyline(latlngs, { color: '#a855f7', weight: 4, opacity: 0.85 })
         .addTo(this.map);
-      this.map.fitBounds(this.routeLine.getBounds(), { padding: [40, 40], maxZoom: 14 });
+      this.map.fitBounds(this.routeLine.getBounds(), { padding: [50, 50], maxZoom: 14 });
     } else {
       this.drawStraightLine();
     }
@@ -361,32 +400,33 @@ export class MapPickerComponent implements OnDestroy {
       if (!res.ok) return;
       const data: Array<{ lat: string; lon: string }> = await res.json();
       if (!data.length) return;
-      const lat = parseFloat(data[0].lat);
-      const lng = parseFloat(data[0].lon);
-      this.placeMarker(target, lat, lng);
+      this.placeMarker(target, parseFloat(data[0].lat), parseFloat(data[0].lon));
       void this.recomputeRouteIfReady();
     } catch {
-      // ignore network errors
+      /* ignore */
     }
   }
 
   private async reverseGeocode(lat: number, lng: number): Promise<string> {
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`,
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
         { headers: { Accept: 'application/json' } }
       );
       if (!res.ok) return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
       const data: { address?: Record<string, string>; display_name?: string } = await res.json();
       const a = data.address ?? {};
-      const city = a['city'] || a['town'] || a['village'] || a['municipality'] || a['hamlet'];
+      const street = [a['road'], a['house_number']].filter(Boolean).join(' ');
+      const locality =
+        a['city'] || a['town'] || a['village'] || a['municipality'] || a['hamlet'] || a['suburb'];
+      const postcode = a['postcode'];
       const country = a['country'];
-      if (city && country) return `${city}, ${country}`;
-      if (city) return city;
-      return (
-        data.display_name?.split(',').slice(0, 2).join(',').trim() ??
-        `${lat.toFixed(4)}, ${lng.toFixed(4)}`
-      );
+      const parts: string[] = [];
+      if (street) parts.push(street);
+      if (postcode || locality) parts.push([postcode, locality].filter(Boolean).join(' '));
+      if (country) parts.push(country);
+      if (parts.length) return parts.join(', ');
+      return data.display_name?.trim() ?? `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     } catch {
       return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
