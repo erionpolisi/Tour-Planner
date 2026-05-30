@@ -1,7 +1,7 @@
 <div
   [class]="fullscreen()
     ? 'fixed inset-0 z-[100] bg-gray-900 flex flex-col'
-    : 'rounded-xl overflow-hidden border border-white/10 bg-white/5 flex flex-col'"
+    : 'relative rounded-xl overflow-hidden border border-white/10 bg-white/5 flex flex-col'"
 >
   <div class="flex items-center justify-between px-3 py-2 bg-white/5 border-b border-white/10 text-xs">
     @if (editable()) {
@@ -39,6 +39,43 @@
   </div>
   <div
     #mapContainer
-    [class]="fullscreen() ? 'w-full flex-1' : 'w-full h-80'"
+    [class]="fullscreen() ? 'w-full flex-1 relative' : 'w-full h-80'"
   ></div>
+  @if (fullscreen() && editable()) {
+    <div class="absolute top-16 left-1/2 -translate-x-1/2 z-[1000] w-[min(90vw,32rem)]">
+      <div class="flex gap-2 p-2 rounded-xl bg-gray-900/95 border border-white/15 shadow-2xl backdrop-blur-sm">
+        <div class="relative flex-1">
+          <lucide-icon [img]="icons.Search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></lucide-icon>
+          <input
+            type="text"
+            placeholder="Search a place (city, address, POI)…"
+            [value]="searchQuery()"
+            (input)="searchQuery.set($any($event.target).value)"
+            (keydown.enter)="runSearch()"
+            class="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/50 text-sm"
+          />
+        </div>
+        <button
+          type="button"
+          (click)="runSearch()"
+          [disabled]="searching()"
+          class="px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold hover:shadow-lg hover:shadow-purple-500/40 transition-all disabled:opacity-50"
+        >{{ searching() ? '…' : 'Search' }}</button>
+      </div>
+      @if (searchResults().length > 0) {
+        <div class="mt-2 rounded-xl bg-gray-900/95 border border-white/15 shadow-2xl backdrop-blur-sm max-h-72 overflow-y-auto">
+          @for (r of searchResults(); track r.displayName) {
+            <button
+              type="button"
+              (click)="selectSearchResult(r)"
+              class="w-full text-left px-4 py-3 text-sm text-gray-200 hover:bg-white/10 border-b border-white/5 last:border-0 transition-all"
+            >
+              <div class="text-xs text-gray-500 mb-0.5">Set as <span class="text-purple-300 font-semibold">{{ activeMarker() }}</span></div>
+              {{ r.displayName }}
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
 </div>

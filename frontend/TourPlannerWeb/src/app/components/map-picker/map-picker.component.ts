@@ -9,7 +9,7 @@ import {
   afterNextRender,
   OnDestroy,
 } from '@angular/core';
-import { LucideAngularModule, Maximize2, Minimize2 } from 'lucide-angular';
+import { LucideAngularModule, Maximize2, Minimize2, Search } from 'lucide-angular';
 import type * as L from 'leaflet';
 import { TransportType } from '../../models/tour.model';
 
@@ -21,16 +21,22 @@ export interface RouteCalculation {
   durationMinutes: number;
 }
 
+interface SearchResult {
+  displayName: string;
+  lat: number;
+  lng: number;
+}
+
 const DEFAULT_CENTER: [number, number] = [48.2082, 16.3738]; // Vienna
 const DEFAULT_ZOOM = 4;
 
 const ICON_BASE = 'https://unpkg.com/leaflet@1.9.4/dist/images/';
 
-// km/h speed estimates for non-driving modes (OSRM public demo only supports car)
-const SPEED_KMH: Record<TransportType, number | null> = {
-  driving: null, // use OSRM duration directly
-  cycling: 20,
-  walking: 5,
+// OSRM profiles served by routing.openstreetmap.de — no API key needed
+const OSRM_PROFILES: Record<TransportType, string> = {
+  driving: 'routed-car',
+  cycling: 'routed-bike',
+  walking: 'routed-foot',
 };
 
 @Component({
@@ -51,7 +57,10 @@ export class MapPickerComponent implements OnDestroy {
 
   protected readonly activeMarker = signal<ActiveMarker>('from');
   protected readonly fullscreen = signal<boolean>(false);
-  protected readonly icons = { Maximize2, Minimize2 };
+  protected readonly searchQuery = signal<string>('');
+  protected readonly searchResults = signal<SearchResult[]>([]);
+  protected readonly searching = signal<boolean>(false);
+  protected readonly icons = { Maximize2, Minimize2, Search };
 
   @ViewChild('mapContainer', { static: true }) mapContainer!: ElementRef<HTMLDivElement>;
 
@@ -106,8 +115,60 @@ export class MapPickerComponent implements OnDestroy {
 
   protected toggleFullscreen(): void {
     this.fullscreen.update((v) => !v);
+    if (!this.fullscreen()) {
+      this.searchResults.set([]);
+      this.searchQuery.set('');
+    }
     // Leaflet needs to be told that container size changed
     setTimeout(() => this.map?.invalidateSize(), 50);
+  }
+
+  protected async runSearch(): Promise<void> {
+    const q = this.searchQuery().trim();
+    if (!q) {
+      this.searchResults.set([]);
+      return;
+    }
+    this.searching.set(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`,
+        { headers: { Accept: 'application/json' } }
+      );
+      if (!res.ok) {
+        this.searchResults.set([]);
+        return;
+      }
+      const data: Array<{ lat: string; lon: string; display_name: string }> = await res.json();
+      this.searchResults.set(
+        data.map((d) => ({
+          displayName: d.display_name,
+          lat: parseFloat(d.lat),
+          lng: parseFloat(d.lon),
+        }))
+      );
+    } catch {
+      this.searchResults.set([]);
+    } finally {
+      this.searching.set(false);
+    }
+  }
+
+  protected async selectSearchResult(r: SearchResult): Promise<void> {
+    const target = this.activeMarker();
+    this.placeMarker(target, r.lat, r.lng);
+    const address = await this.reverseGeocode(r.lat, r.lng);
+    if (target === 'from') {
+      this.lastGeocodedFrom = address;
+      this.fromChange.emit(address);
+      this.activeMarker.set('to');
+    } else {
+      this.lastGeocodedTo = address;
+      this.toChange.emit(address);
+    }
+    this.searchResults.set([]);
+    this.searchQuery.set('');
+    void this.recomputeRouteIfReady();
   }
 
   private async initMap(): Promise<void> {
@@ -213,7 +274,9 @@ export class MapPickerComponent implements OnDestroy {
     try {
       const [lat1, lng1] = this.fromCoords;
       const [lat2, lng2] = this.toCoords;
-      const url = `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`;
+      const transport = this.transportType();
+      const profile = OSRM_PROFILES[transport];
+      const url = `https://routing.openstreetmap.de/${profile}/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`;
       const res = await fetch(url, { headers: { Accept: 'application/json' } });
       if (!res.ok) {
         this.drawStraightLine();
@@ -233,10 +296,7 @@ export class MapPickerComponent implements OnDestroy {
       }
 
       const distanceKm = route.distance / 1000;
-      const transport = this.transportType();
-      const speed = SPEED_KMH[transport];
-      const durationMinutes =
-        speed != null ? Math.round((distanceKm / speed) * 60) : Math.round(route.duration / 60);
+      const durationMinutes = Math.round(route.duration / 60);
       const durationStr = this.formatDuration(durationMinutes);
 
       this.drawRouteLine(route.geometry?.coordinates ?? null);

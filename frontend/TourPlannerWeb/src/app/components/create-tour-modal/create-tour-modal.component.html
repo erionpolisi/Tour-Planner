@@ -29,23 +29,23 @@
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="text-xs text-gray-400 mb-1 block">From</label>
+            <label class="text-xs text-gray-400 mb-1 block">From <span class="text-gray-600">— set via map</span></label>
             <input
               type="text"
-              placeholder="Start city"
+              placeholder="Click on map"
               [value]="vm.form().from"
-              (input)="vm.updateField('from', $any($event.target).value)"
-              class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all"
+              readonly
+              class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-500 cursor-not-allowed"
             />
           </div>
           <div>
-            <label class="text-xs text-gray-400 mb-1 block">To</label>
+            <label class="text-xs text-gray-400 mb-1 block">To <span class="text-gray-600">— set via map</span></label>
             <input
               type="text"
-              placeholder="End city"
+              placeholder="Click on map"
               [value]="vm.form().to"
-              (input)="vm.updateField('to', $any($event.target).value)"
-              class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all"
+              readonly
+              class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-500 cursor-not-allowed"
             />
           </div>
         </div>
