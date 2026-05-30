@@ -19,10 +19,11 @@ import {
 import { TourDetailViewModel } from '../../viewmodels/tour-detail.viewmodel';
 import { AddLogViewModel } from '../../viewmodels/add-log.viewmodel';
 import { TransportType } from '../../models/tour.model';
+import { MapPickerComponent } from '../map-picker/map-picker.component';
 
 @Component({
   selector: 'app-tour-detail-modal',
-  imports: [LucideAngularModule],
+  imports: [LucideAngularModule, MapPickerComponent],
   host: { style: 'display: contents' },
   templateUrl: './tour-detail-modal.component.html',
 })

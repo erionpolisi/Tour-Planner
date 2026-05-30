@@ -39,8 +39,11 @@ export class CreateTourViewModel {
     duration: '',
   });
 
+  readonly routeSuggestion = signal<{ distanceKm: number; durationStr: string } | null>(null);
+
   open(): void {
     this.form.set({ name: '', from: '', to: '', transportType: 'driving', distance: '', duration: '' });
+    this.routeSuggestion.set(null);
     this.modalService.openCreateTour();
   }
 
@@ -50,6 +53,17 @@ export class CreateTourViewModel {
 
   updateField(field: keyof CreateTourForm, value: string): void {
     this.form.update((f) => ({ ...f, [field]: value }));
+  }
+
+  applyRoute(distanceKm: number, durationStr: string): void {
+    this.routeSuggestion.set({ distanceKm, durationStr });
+    this.form.update((f) => ({ ...f, distance: String(distanceKm) }));
+  }
+
+  applyDurationSuggestion(): void {
+    const s = this.routeSuggestion();
+    if (!s) return;
+    this.form.update((f) => ({ ...f, duration: s.durationStr }));
   }
 
   save(): void {
