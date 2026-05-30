@@ -53,7 +53,12 @@
   <!-- Tours Grid -->
   <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
     @for (tour of vm.filteredTours(); track tour.id) {
-      <app-tour-card [tour]="tour" (delete)="onDeleteTour($event)"></app-tour-card>
+      <app-tour-card
+        [tour]="tour"
+        (open)="onOpenTour($event)"
+        (edit)="onEditTour($event)"
+        (delete)="onDeleteTour($event)"
+      ></app-tour-card>
     }
   </div>
 </main>

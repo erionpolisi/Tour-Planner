@@ -1,9 +1,10 @@
 import { Component, inject } from '@angular/core';
 import { LucideAngularModule, Plus, Footprints, Bike, Car, LayoutGrid, LucideIconData, CircleCheck, CalendarClock, ListFilter } from 'lucide-angular';
 import { TourCardComponent } from '../tour-card/tour-card.component';
-import { TransportType, TourStatus } from '../../models/tour.model';
+import { Tour, TransportType, TourStatus } from '../../models/tour.model';
 import { TourListViewModel } from '../../viewmodels/tour-list.viewmodel';
 import { CreateTourViewModel } from '../../viewmodels/create-tour.viewmodel';
+import { TourDetailViewModel } from '../../viewmodels/tour-detail.viewmodel';
 
 @Component({
   selector: 'app-tour-list',
@@ -13,6 +14,7 @@ import { CreateTourViewModel } from '../../viewmodels/create-tour.viewmodel';
 export class TourListComponent {
   protected readonly vm = inject(TourListViewModel);
   private readonly createTourVm = inject(CreateTourViewModel);
+  private readonly tourDetailVm = inject(TourDetailViewModel);
   protected readonly icons = { Plus, Footprints, Bike, Car, LayoutGrid, CircleCheck, CalendarClock, ListFilter };
 
   protected readonly transportModes: { type: TransportType | 'all'; icon: LucideIconData; label: string }[] = [
@@ -30,6 +32,14 @@ export class TourListComponent {
 
   onCreateTour(): void {
     this.createTourVm.open();
+  }
+
+  onOpenTour(tour: Tour): void {
+    this.tourDetailVm.open(tour);
+  }
+
+  onEditTour(tour: Tour): void {
+    this.tourDetailVm.openInEditMode(tour);
   }
 
   onDeleteTour(id: number): void {
