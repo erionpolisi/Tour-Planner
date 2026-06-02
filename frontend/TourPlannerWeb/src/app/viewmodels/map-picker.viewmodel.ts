@@ -170,6 +170,13 @@ export class MapPickerViewModel {
   }
 
   private applyMarker(target: ActiveMarker, coords: Coords, address: string): void {
+    // A coord just changed, so any previously rendered route is stale.
+    // Clear it now (synchronously) so the view's fit-effect doesn't try to
+    // frame the OLD route around the NEW endpoint while we async-recompute.
+    this.routeCoords.set(null);
+    this.lastRoute.set(null);
+    this.lastRouteKey = '';
+
     if (target === 'from') {
       this.fromCoords.set(coords);
       this.fromAddress.set(address);

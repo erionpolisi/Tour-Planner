@@ -104,6 +104,15 @@ export class MapPickerComponent implements OnDestroy {
     effect(() => this.renderFromMarker(this.vm.fromCoords()));
     effect(() => this.renderToMarker(this.vm.toCoords()));
     effect(() => this.renderRoute(this.vm.routeCoords(), this.vm.fromCoords(), this.vm.toCoords()));
+    // Single source of truth for what the map is looking at:
+    //   both set  → fit the whole route
+    //   one set   → center on that point
+    //   none set  → leave the map alone
+    effect(() => this.fitMapView(
+      this.vm.fromCoords(),
+      this.vm.toCoords(),
+      this.vm.routeCoords(),
+    ));
 
     // ── Fullscreen → DOM portaling ──
     effect(() => {
@@ -225,8 +234,6 @@ export class MapPickerComponent implements OnDestroy {
       .marker(c, { icon, title: 'From' })
       .addTo(this.map)
       .bindPopup('From');
-    // Only fit-to-single if no other marker exists yet; otherwise renderRoute fits.
-    if (!this.toMarker) this.map.setView(c, SINGLE_MARKER_ZOOM);
   }
 
   private renderToMarker(c: Coords | null): void {
@@ -242,7 +249,6 @@ export class MapPickerComponent implements OnDestroy {
       .marker(c, { icon, title: 'To' })
       .addTo(this.map)
       .bindPopup('To');
-    if (!this.fromMarker) this.map.setView(c, SINGLE_MARKER_ZOOM);
   }
 
   private renderRoute(route: Coords[] | null, f: Coords | null, t: Coords | null): void {
@@ -255,12 +261,30 @@ export class MapPickerComponent implements OnDestroy {
       this.routeLine = this.leaflet
         .polyline(route, { color: '#a855f7', weight: 4, opacity: 0.85 })
         .addTo(this.map);
-      this.map.fitBounds(this.routeLine.getBounds(), { padding: ROUTE_FIT_PADDING, maxZoom: ROUTE_FIT_MAX_ZOOM_ROUTE });
     } else if (f && t) {
       this.routeLine = this.leaflet
         .polyline([f, t], { color: '#a855f7', weight: 3, dashArray: '6,8' })
         .addTo(this.map);
-      this.map.fitBounds(this.leaflet.latLngBounds([f, t]), { padding: ROUTE_FIT_PADDING, maxZoom: ROUTE_FIT_MAX_ZOOM_STRAIGHT });
+    }
+  }
+
+  /** Centers/fits the map according to the two-rule policy:
+   *  - both points set  → fit the route bounds
+   *  - exactly one set  → center on it
+   *  - none set         → do nothing */
+  private fitMapView(f: Coords | null, t: Coords | null, route: Coords[] | null): void {
+    if (!this.map || !this.leaflet) return;
+    if (f && t) {
+      const pts = route && route.length > 1 ? route : [f, t];
+      const maxZoom = route && route.length > 1
+        ? ROUTE_FIT_MAX_ZOOM_ROUTE
+        : ROUTE_FIT_MAX_ZOOM_STRAIGHT;
+      this.map.fitBounds(this.leaflet.latLngBounds(pts), {
+        padding: ROUTE_FIT_PADDING,
+        maxZoom,
+      });
+    } else if (f || t) {
+      this.map.setView((f ?? t)!, SINGLE_MARKER_ZOOM);
     }
   }
 }
