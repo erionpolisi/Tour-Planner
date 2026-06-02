@@ -19,7 +19,7 @@
   <!-- Slot the map lives in while inline -->
   <div #inlineSlot class="w-full h-80 relative">
     <!-- The single, real Leaflet container. Moved to fullscreen slot at runtime. -->
-    <div #mapEl class="absolute inset-0"></div>
+    <div #mapEl class="absolute inset-0" [class.map-pick-cursor]="vm.fullscreen() && vm.editable()"></div>
   </div>
 </div>
 
@@ -38,7 +38,7 @@
         ? 'absolute top-4 right-4 z-[2] w-12 h-12 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white shadow-2xl shadow-emerald-500/50 flex items-center justify-center transition-all hover:scale-110 ring-4 ring-emerald-500/30'
         : 'absolute top-4 right-4 z-[2] w-12 h-12 rounded-full bg-gray-700/90 hover:bg-gray-600 text-white shadow-2xl flex items-center justify-center transition-all hover:scale-110'"
     >
-      <lucide-icon [img]="icons.X" class="w-6 h-6"></lucide-icon>
+      <lucide-icon [img]="vm.bothMarkersSet() ? icons.Check : icons.X" class="w-6 h-6"></lucide-icon>
     </button>
 
     @if (vm.editable()) {

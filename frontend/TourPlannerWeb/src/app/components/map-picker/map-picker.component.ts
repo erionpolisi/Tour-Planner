@@ -9,7 +9,7 @@ import {
   inject,
   OnDestroy,
 } from '@angular/core';
-import { LucideAngularModule, Maximize2, X, Search } from 'lucide-angular';
+import { LucideAngularModule, Maximize2, X, Search, Check } from 'lucide-angular';
 import type * as L from 'leaflet';
 import { TransportType } from '../../models/tour.model';
 import type { Coords, RouteCalculation } from '../../models/geo.model';
@@ -17,6 +17,8 @@ import { MapPickerViewModel } from '../../viewmodels/map-picker.viewmodel';
 
 const DEFAULT_CENTER: [number, number] = [48.2082, 16.3738]; // Vienna
 const DEFAULT_ZOOM = 4;
+/** City-level zoom used when jumping to a freshly placed single marker. */
+const SINGLE_MARKER_ZOOM = 13;
 const ICON_BASE = 'https://unpkg.com/leaflet@1.9.4/dist/images/';
 
 /**
@@ -31,6 +33,12 @@ const ICON_BASE = 'https://unpkg.com/leaflet@1.9.4/dist/images/';
   host: { style: 'display: block' },
   templateUrl: './map-picker.component.html',
   providers: [MapPickerViewModel],
+  styles: [`
+    /* In pick-mode the user shouldn't see Leaflet's "grab" hand;
+       clicks select a location, drag still pans (Leaflet swaps to .leaflet-dragging). */
+    :host ::ng-deep .map-pick-cursor.leaflet-grab { cursor: crosshair; }
+    :host ::ng-deep .map-pick-cursor.leaflet-grab.leaflet-dragging { cursor: grabbing; }
+  `],
 })
 export class MapPickerComponent implements OnDestroy {
   readonly from = input<string>('');
@@ -43,7 +51,7 @@ export class MapPickerComponent implements OnDestroy {
   readonly routeCalculated = output<RouteCalculation>();
 
   protected readonly vm = inject(MapPickerViewModel);
-  protected readonly icons = { Maximize2, X, Search };
+  protected readonly icons = { Maximize2, X, Search, Check };
 
   @ViewChild('mapEl', { static: true }) mapEl!: ElementRef<HTMLDivElement>;
   @ViewChild('inlineSlot', { static: true }) inlineSlot!: ElementRef<HTMLDivElement>;
@@ -109,6 +117,9 @@ export class MapPickerComponent implements OnDestroy {
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
       zoomControl: true,
+      // In editable mode a single click is a "pick" action — a double click
+      // should NOT zoom. Scroll-wheel and zoom-control buttons still work.
+      doubleClickZoom: !this.vm.editable(),
     });
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -183,7 +194,7 @@ export class MapPickerComponent implements OnDestroy {
       .addTo(this.map)
       .bindPopup('From');
     // Only fit-to-single if no other marker exists yet; otherwise renderRoute fits.
-    if (!this.toMarker) this.map.setView(c, 9);
+    if (!this.toMarker) this.map.setView(c, SINGLE_MARKER_ZOOM);
   }
 
   private renderToMarker(c: Coords | null): void {
@@ -199,7 +210,7 @@ export class MapPickerComponent implements OnDestroy {
       .marker(c, { icon, title: 'To' })
       .addTo(this.map)
       .bindPopup('To');
-    if (!this.fromMarker) this.map.setView(c, 9);
+    if (!this.fromMarker) this.map.setView(c, SINGLE_MARKER_ZOOM);
   }
 
   private renderRoute(route: Coords[] | null, f: Coords | null, t: Coords | null): void {
