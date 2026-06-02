@@ -43,7 +43,11 @@ export class MapPickerViewModel {
 
   readonly bothMarkersSet = computed(() => !!this.fromAddress() && !!this.toAddress());
 
-  /** Component wires these to emit its @Output()s. Avoids effect→emit cycles. */
+  /** Observer hooks: the component wires these to its @Output()s. The VM
+   *  itself doesn't know (and shouldn't care) what happens when an address
+   *  or route changes — it just announces "a change happened". This keeps
+   *  the VM ignorant of Angular outputs/parents while avoiding effect-based
+   *  emit loops between the inputs↔VM signal bindings. */
   onFromChange: ((addr: string) => void) | null = null;
   onToChange: ((addr: string) => void) | null = null;
   onRouteChange: ((r: RouteResult) => void) | null = null;

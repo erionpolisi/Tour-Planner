@@ -81,7 +81,10 @@ export class MapPickerComponent implements OnDestroy {
     // `afterNextRender` is browser-only by contract, so `initMap` is safe.
     afterNextRender(() => void this.initMap());
 
-    // ── ViewModel → @Output()s (direct callbacks, no effect cycles) ──
+    // ── ViewModel → @Output() (direct callbacks, no effect cycles) ──
+    // Effect-based emission caused echo loops with the Inputs→VM effects
+    // below (parent updates input → setFromInput → announce → emit → parent...).
+    // Direct callbacks fire exactly once at the point of mutation.
     this.vm.onFromChange = (addr) => this.fromChange.emit(addr);
     this.vm.onToChange = (addr) => this.toChange.emit(addr);
     this.vm.onRouteChange = (r) =>
