@@ -1,6 +1,7 @@
 import {
   Component,
   ElementRef,
+  PLATFORM_ID,
   ViewChild,
   input,
   output,
@@ -9,6 +10,7 @@ import {
   inject,
   OnDestroy,
 } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { LucideAngularModule, Maximize2, X, Search, Check } from 'lucide-angular';
 import type * as L from 'leaflet';
 import { TransportType } from '../../models/tour.model';
@@ -66,7 +68,11 @@ export class MapPickerComponent implements OnDestroy {
   private toMarker: L.Marker | null = null;
   private routeLine: L.Polyline | null = null;
 
+  /** True in the browser, false during SSR/pre-render. */
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
   constructor() {
+    // `afterNextRender` is browser-only by contract, so `initMap` is safe.
     afterNextRender(() => void this.initMap());
 
     // ── ViewModel → @Output()s (direct callbacks, no effect cycles) ──
@@ -93,6 +99,8 @@ export class MapPickerComponent implements OnDestroy {
     // ── Fullscreen → DOM portaling ──
     effect(() => {
       const fs = this.vm.fullscreen();
+      // DOM/window APIs don't exist during SSR — bail out cleanly.
+      if (!this.isBrowser) return;
       document.body.style.overflow = fs ? 'hidden' : '';
       if (fs) {
         requestAnimationFrame(() => this.portalToFullscreen());
@@ -107,7 +115,7 @@ export class MapPickerComponent implements OnDestroy {
     this.vm.cleanup();
     this.map?.remove();
     this.map = null;
-    document.body.style.overflow = '';
+    if (this.isBrowser) document.body.style.overflow = '';
   }
 
   // ───────── Leaflet init ─────────
@@ -165,6 +173,7 @@ export class MapPickerComponent implements OnDestroy {
 
   /** Leaflet must be told that its container resized; call across a few frames. */
   private scheduleInvalidate(): void {
+    if (!this.isBrowser) return;
     [0, 60, 200].forEach((t) => setTimeout(() => this.map?.invalidateSize(), t));
   }
 
