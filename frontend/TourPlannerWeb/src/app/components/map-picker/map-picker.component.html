@@ -8,7 +8,7 @@
     }
     <button
       type="button"
-      (click)="vm.enterFullscreen()"
+      (click)="enterFullscreen()"
       class="px-2 py-1 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1.5"
       title="Open fullscreen map"
     >
@@ -19,12 +19,12 @@
   <!-- Slot the map lives in while inline -->
   <div #inlineSlot class="w-full h-80 relative">
     <!-- The single, real Leaflet container. Moved to fullscreen slot at runtime. -->
-    <div #mapEl class="absolute inset-0" [class.map-pick-cursor]="vm.fullscreen() && vm.editable()"></div>
+    <div #mapEl class="absolute inset-0" [class.map-pick-cursor]="fullscreen() && vm.editable()"></div>
   </div>
 </div>
 
 <!-- ───────── fullscreen overlay ───────── -->
-@if (vm.fullscreen()) {
+@if (fullscreen()) {
   <div class="fixed inset-0 z-[9999] bg-gray-950">
     <!-- Map portal target -->
     <div #fullscreenSlot class="absolute inset-0"></div>
@@ -32,7 +32,7 @@
     <!-- Close button: grey by default, GREEN once both markers are set -->
     <button
       type="button"
-      (click)="vm.exitFullscreen()"
+      (click)="exitFullscreen()"
       [title]="vm.bothMarkersSet() ? 'Done — close map' : 'Close map'"
       [class]="vm.bothMarkersSet()
         ? 'absolute top-4 right-4 z-[2] w-12 h-12 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white shadow-2xl shadow-emerald-500/50 flex items-center justify-center transition-all hover:scale-110 ring-4 ring-emerald-500/30'

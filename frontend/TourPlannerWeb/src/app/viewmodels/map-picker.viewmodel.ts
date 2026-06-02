@@ -29,7 +29,6 @@ export class MapPickerViewModel {
 
   // UI state.
   readonly activeMarker = signal<ActiveMarker>('from');
-  readonly fullscreen = signal<boolean>(false);
   readonly searchQuery = signal<string>('');
   readonly searchResults = signal<SearchResult[]>([]);
   readonly searching = signal<boolean>(false);
@@ -93,14 +92,16 @@ export class MapPickerViewModel {
     this.activeMarker.set(t);
   }
 
-  enterFullscreen(): void {
-    this.fullscreen.set(true);
-  }
-
-  exitFullscreen(): void {
-    this.fullscreen.set(false);
+  /** Clears any pending search (query, results, debounce). Called by the
+   *  view when its presentation context closes (e.g. closing the overlay). */
+  resetSearch(): void {
     this.searchQuery.set('');
     this.searchResults.set([]);
+    this.searching.set(false);
+    if (this.searchDebounce) {
+      clearTimeout(this.searchDebounce);
+      this.searchDebounce = null;
+    }
   }
 
   onSearchInput(value: string): void {

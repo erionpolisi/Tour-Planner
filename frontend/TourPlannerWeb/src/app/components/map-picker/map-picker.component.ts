@@ -8,6 +8,7 @@ import {
   effect,
   afterNextRender,
   inject,
+  signal,
   OnDestroy,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -58,6 +59,11 @@ export class MapPickerComponent implements OnDestroy {
   protected readonly vm = inject(MapPickerViewModel);
   protected readonly icons = { Maximize2, X, Search, Check };
 
+  /** View-only state: whether the fullscreen overlay is shown.
+   *  Kept in the component (not the VM) because it's a presentation choice
+   *  of *this* desktop UI, not a property of the map-picker model. */
+  protected readonly fullscreen = signal<boolean>(false);
+
   @ViewChild('mapEl', { static: true }) mapEl!: ElementRef<HTMLDivElement>;
   @ViewChild('inlineSlot', { static: true }) inlineSlot!: ElementRef<HTMLDivElement>;
   @ViewChild('fullscreenSlot', { static: false }) fullscreenSlot?: ElementRef<HTMLDivElement>;
@@ -98,7 +104,7 @@ export class MapPickerComponent implements OnDestroy {
 
     // ── Fullscreen → DOM portaling ──
     effect(() => {
-      const fs = this.vm.fullscreen();
+      const fs = this.fullscreen();
       // DOM/window APIs don't exist during SSR — bail out cleanly.
       if (!this.isBrowser) return;
       document.body.style.overflow = fs ? 'hidden' : '';
@@ -109,6 +115,17 @@ export class MapPickerComponent implements OnDestroy {
       }
       this.scheduleInvalidate();
     });
+  }
+
+  // ───────── View commands (template handlers) ─────────
+
+  enterFullscreen(): void {
+    this.fullscreen.set(true);
+  }
+
+  exitFullscreen(): void {
+    this.fullscreen.set(false);
+    this.vm.resetSearch();
   }
 
   ngOnDestroy(): void {
@@ -143,8 +160,8 @@ export class MapPickerComponent implements OnDestroy {
     map.on('click', (ev: L.LeafletMouseEvent) => {
       if (!this.vm.editable()) return;
       // Small map: a click opens fullscreen so the user can pick precisely.
-      if (!this.vm.fullscreen()) {
-        this.vm.enterFullscreen();
+      if (!this.fullscreen()) {
+        this.enterFullscreen();
         return;
       }
       void this.vm.handleMapClick(ev.latlng.lat, ev.latlng.lng);
