@@ -14,6 +14,7 @@ export class TourDetailViewModel {
   readonly editMode = this.modalService.editMode;
   readonly editForm = signal<Partial<Tour>>({});
   readonly justCompleted = signal(false);
+  readonly routeSuggestion = signal<{ distanceKm: number; durationStr: string } | null>(null);
 
   open(tour: Tour): void {
     this.justCompleted.set(false);
@@ -39,6 +40,17 @@ export class TourDetailViewModel {
 
   updateField(field: keyof Tour, value: string): void {
     this.editForm.update((f) => ({ ...f, [field]: value }));
+  }
+
+  applyRoute(distanceKm: number, durationStr: string): void {
+    this.routeSuggestion.set({ distanceKm, durationStr });
+    this.editForm.update((f) => ({ ...f, distance: String(distanceKm) }));
+  }
+
+  applyDurationSuggestion(): void {
+    const s = this.routeSuggestion();
+    if (!s) return;
+    this.editForm.update((f) => ({ ...f, duration: s.durationStr }));
   }
 
   save(): void {

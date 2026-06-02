@@ -1,4 +1,35 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+/* Leaflet hardening against Tailwind preflight */
+.leaflet-container {
+  background: #1f2937;
+  font-family: inherit;
+  z-index: 0;
+}
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+  max-width: none !important;
+  max-height: none !important;
+}
+.leaflet-tile {
+  width: 256px !important;
+  height: 256px !important;
+}
+.leaflet-control-attribution {
+  background: rgba(31, 41, 55, 0.85) !important;
+  color: #cbd5e1 !important;
+  font-size: 10px !important;
+}
+.leaflet-control-attribution a { color: #a78bfa !important; }
 
 /* Global styles */
 html, body {

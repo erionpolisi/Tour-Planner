@@ -2,10 +2,11 @@ import { Component, inject } from '@angular/core';
 import { LucideAngularModule, X, Save, Footprints, Bike, Car, LucideIconData } from 'lucide-angular';
 import { CreateTourViewModel } from '../../viewmodels/create-tour.viewmodel';
 import { TransportType } from '../../models/tour.model';
+import { MapPickerComponent } from '../map-picker/map-picker.component';
 
 @Component({
   selector: 'app-create-tour-modal',
-  imports: [LucideAngularModule],
+  imports: [LucideAngularModule, MapPickerComponent],
   host: { style: 'display: contents' },
   templateUrl: './create-tour-modal.component.html',
 })
