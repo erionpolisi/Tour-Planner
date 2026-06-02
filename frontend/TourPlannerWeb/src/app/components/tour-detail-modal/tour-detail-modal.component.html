@@ -1,4 +1,4 @@
-@if (vm.tour()) {
+﻿@if (vm.tour()) {
   <!-- Backdrop -->
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
@@ -19,14 +19,33 @@
 
       @if (!vm.editMode()) {
         <!-- View Mode -->
+        <!-- Image header -->
+        <div class="mb-6 rounded-xl overflow-hidden border border-white/10 bg-white/5 h-40">
+          <img
+            [src]="viewImage(vm.tour()!)"
+            [alt]="vm.tour()!.name"
+            class="w-full h-full object-cover"
+            loading="lazy"
+            referrerpolicy="no-referrer"
+            (error)="$any($event.target).style.display='none'"
+          />
+        </div>
+
         <div class="mb-6">
           <div class="h-2 w-24 rounded-full bg-gradient-to-r mb-4" [class]="vm.tour()!.color"></div>
           <h2 class="text-2xl font-bold text-white mb-1">{{ vm.tour()!.name }}</h2>
           <div class="flex items-center gap-2 text-sm text-gray-400">
             <lucide-icon [img]="icons.MapPin" class="w-4 h-4"></lucide-icon>
-            {{ vm.tour()!.from }} → {{ vm.tour()!.to }}
+            {{ vm.tour()!.from }} â†’ {{ vm.tour()!.to }}
           </div>
         </div>
+
+        @if (vm.tour()!.description) {
+          <div class="mb-6 p-4 rounded-xl bg-white/5 border border-white/10">
+            <div class="text-xs text-gray-400 mb-1">Description</div>
+            <p class="text-sm text-gray-200 whitespace-pre-line">{{ vm.tour()!.description }}</p>
+          </div>
+        }
 
         <div class="grid grid-cols-2 gap-4 mb-6">
           <div class="p-4 rounded-xl bg-white/5 border border-white/10">
@@ -38,7 +57,7 @@
               <lucide-icon [img]="icons.Clock" class="w-3 h-3"></lucide-icon>
               Duration
             </div>
-            <div class="text-xl font-bold text-white">{{ vm.tour()!.status === 'planned' ? 'est. ' : '' }}{{ vm.tour()!.duration }}</div>
+            <div class="text-xl font-bold text-white">{{ vm.tour()!.status === 'planned' ? 'est. ' : '' }}{{ formatDuration(vm.tour()!.duration) }}</div>
           </div>
           <div class="p-4 rounded-xl bg-white/5 border border-white/10">
             <div class="text-xs text-gray-400 mb-1">Status</div>
@@ -121,35 +140,82 @@
         <h2 class="text-2xl font-bold text-white mb-6">Edit Tour</h2>
 
         <div class="space-y-4 mb-6">
+          <!-- Name -->
           <div>
-            <label class="text-xs text-gray-400 mb-1 block">Name</label>
+            <label class="text-xs text-gray-400 mb-1 block">Name <span class="text-red-400">*</span></label>
             <input
               type="text"
               [value]="vm.editForm().name"
               (input)="vm.updateField('name', $any($event.target).value)"
-              class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all"
+              [class]="(vm.submitted() && vm.errors().name)
+                ? 'w-full px-4 py-3 rounded-xl bg-white/5 border border-red-500/60 text-white placeholder:text-gray-500 focus:outline-none focus:border-red-500 transition-all'
+                : 'w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all'"
             />
+            @if (vm.submitted() && vm.errors().name; as err) {
+              <p class="text-xs text-red-400 mt-1 flex items-center gap-1">
+                <lucide-icon [img]="icons.AlertCircle" class="w-3 h-3"></lucide-icon>
+                {{ err }}
+              </p>
+            }
           </div>
+
+          <!-- Description -->
+          <div>
+            <label class="text-xs text-gray-400 mb-1 block">Description <span class="text-red-400">*</span></label>
+            <textarea
+              rows="3"
+              [value]="vm.editForm().description ?? ''"
+              (input)="vm.updateField('description', $any($event.target).value)"
+              [class]="(vm.submitted() && vm.errors().description)
+                ? 'w-full px-4 py-3 rounded-xl bg-white/5 border border-red-500/60 text-white placeholder:text-gray-500 focus:outline-none focus:border-red-500 transition-all resize-none'
+                : 'w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all resize-none'"
+            ></textarea>
+            <div class="flex justify-between items-start mt-1">
+              @if (vm.submitted() && vm.errors().description; as err) {
+                <p class="text-xs text-red-400 flex items-center gap-1">
+                  <lucide-icon [img]="icons.AlertCircle" class="w-3 h-3"></lucide-icon>
+                  {{ err }}
+                </p>
+              } @else {
+                <span></span>
+              }
+              <span class="text-[11px] text-gray-500">{{ (vm.editForm().description ?? '').length }}/500</span>
+            </div>
+          </div>
+
+          <!-- From / To -->
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="text-xs text-gray-400 mb-1 block">From <span class="text-gray-600">— set via map</span></label>
+              <label class="text-xs text-gray-400 mb-1 block">From <span class="text-red-400">*</span> <span class="text-gray-600">â€” set via map</span></label>
               <input
                 type="text"
                 [value]="vm.editForm().from"
                 readonly
-                class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-500 cursor-not-allowed"
+                [class]="(vm.submitted() && vm.errors().from)
+                  ? 'w-full px-4 py-3 rounded-xl bg-white/5 border border-red-500/60 text-white placeholder:text-gray-500 cursor-not-allowed'
+                  : 'w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-500 cursor-not-allowed'"
               />
             </div>
             <div>
-              <label class="text-xs text-gray-400 mb-1 block">To <span class="text-gray-600">— set via map</span></label>
+              <label class="text-xs text-gray-400 mb-1 block">To <span class="text-red-400">*</span> <span class="text-gray-600">â€” set via map</span></label>
               <input
                 type="text"
                 [value]="vm.editForm().to"
                 readonly
-                class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-500 cursor-not-allowed"
+                [class]="(vm.submitted() && vm.errors().to)
+                  ? 'w-full px-4 py-3 rounded-xl bg-white/5 border border-red-500/60 text-white placeholder:text-gray-500 cursor-not-allowed'
+                  : 'w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-500 cursor-not-allowed'"
               />
             </div>
           </div>
+          @if (vm.submitted() && (vm.errors().from || vm.errors().to)) {
+            <p class="text-xs text-red-400 flex items-center gap-1">
+              <lucide-icon [img]="icons.AlertCircle" class="w-3 h-3"></lucide-icon>
+              {{ vm.errors().from || vm.errors().to }}
+            </p>
+          }
+
+          <!-- Map -->
           <div>
             <label class="text-xs text-gray-400 mb-1 block">Map</label>
             <app-map-picker
@@ -159,9 +225,11 @@
               [editable]="true"
               (fromChange)="vm.updateField('from', $event)"
               (toChange)="vm.updateField('to', $event)"
-              (routeCalculated)="vm.applyRoute($event.distanceKm, $event.durationStr)"
+              (routeCalculated)="vm.applyRoute($event.distanceKm, $event.durationMinutes, $event.durationStr)"
             ></app-map-picker>
           </div>
+
+          <!-- Transport -->
           <div>
             <label class="text-xs text-gray-400 mb-2 block">Transport Type</label>
             <div class="flex gap-2">
@@ -178,27 +246,35 @@
               }
             </div>
           </div>
+
+          <!-- Distance / Duration -->
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="text-xs text-gray-400 mb-1 block">
-                Distance (km)
-                @if (vm.routeSuggestion()) {
-                  <span class="ml-1 text-emerald-400">• auto</span>
-                }
+                Distance (km) <span class="text-red-400">*</span>
+                <span class="ml-1 text-gray-600">— set via map</span>
               </label>
               <input
                 type="text"
-                [value]="vm.editForm().distance"
-                (input)="vm.updateField('distance', $any($event.target).value)"
-                [readonly]="!!vm.routeSuggestion()"
-                [class]="vm.routeSuggestion()
+                readonly
+                [value]="vm.editForm().distance ? vm.editForm().distance + ' km' : ''"
+                placeholder="Pick a route on the map"
+                [class]="(vm.submitted() && vm.errors().distance)
+                  ? 'w-full px-4 py-3 rounded-xl bg-white/5 border border-red-500/60 text-white placeholder:text-gray-500 cursor-not-allowed'
+                  : vm.routeSuggestion()
                   ? 'w-full px-4 py-3 rounded-xl bg-white/5 border border-emerald-500/30 text-white cursor-not-allowed'
-                  : 'w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all'"
+                  : 'w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-500 cursor-not-allowed'"
               />
+              @if (vm.submitted() && vm.errors().distance; as err) {
+                <p class="text-xs text-red-400 mt-1 flex items-center gap-1">
+                  <lucide-icon [img]="icons.AlertCircle" class="w-3 h-3"></lucide-icon>
+                  {{ err }}
+                </p>
+              }
             </div>
             <div>
               <label class="text-xs text-gray-400 mb-1 flex items-center justify-between gap-2">
-                <span>Duration</span>
+                <span>Duration <span class="text-red-400">*</span></span>
                 @if (vm.routeSuggestion(); as s) {
                   <button
                     type="button"
@@ -214,9 +290,11 @@
                     type="number"
                     min="0"
                     max="99"
-                    [value]="getDurationHours(vm.editForm().duration ?? '')"
-                    (input)="vm.updateField('duration', formatDuration(+$any($event.target).value, getDurationMinutes(vm.editForm().duration ?? '')))"
-                    class="w-full px-4 py-3 pr-8 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    [value]="getHours(vm.editForm().duration)"
+                    (input)="vm.updateField('duration', toMinutes(+$any($event.target).value, getMinutes(vm.editForm().duration)))"
+                    [class]="(vm.submitted() && vm.errors().duration)
+                      ? 'w-full px-4 py-3 pr-8 rounded-xl bg-white/5 border border-red-500/60 text-white focus:outline-none focus:border-red-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
+                      : 'w-full px-4 py-3 pr-8 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'"
                   />
                   <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">h</span>
                 </div>
@@ -226,14 +304,91 @@
                     type="number"
                     min="0"
                     max="59"
-                    [value]="getDurationMinutes(vm.editForm().duration ?? '')"
-                    (input)="vm.updateField('duration', formatDuration(getDurationHours(vm.editForm().duration ?? ''), +$any($event.target).value))"
-                    class="w-full px-4 py-3 pr-10 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    [value]="getMinutes(vm.editForm().duration)"
+                    (input)="vm.updateField('duration', toMinutes(getHours(vm.editForm().duration), +$any($event.target).value))"
+                    [class]="(vm.submitted() && vm.errors().duration)
+                      ? 'w-full px-4 py-3 pr-10 rounded-xl bg-white/5 border border-red-500/60 text-white focus:outline-none focus:border-red-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
+                      : 'w-full px-4 py-3 pr-10 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'"
                   />
                   <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">min</span>
                 </div>
               </div>
+              @if (vm.submitted() && vm.errors().duration; as err) {
+                <p class="text-xs text-red-400 mt-1 flex items-center gap-1">
+                  <lucide-icon [img]="icons.AlertCircle" class="w-3 h-3"></lucide-icon>
+                  {{ err }}
+                </p>
+              }
             </div>
+          </div>
+
+          <!-- Image -->
+          <div>
+            <label class="text-xs text-gray-400 mb-1 flex items-center gap-1">
+              <lucide-icon [img]="icons.Image" class="w-3 h-3"></lucide-icon>
+              Image <span class="text-red-400">*</span>
+              <span class="text-gray-600">— pick a default or upload your own</span>
+            </label>
+
+            <!-- Selected preview -->
+            <div class="h-40 rounded-xl overflow-hidden border border-white/10 bg-white/5">
+              <img
+                [src]="editImage()"
+                alt="Selected tour image"
+                class="w-full h-full object-cover"
+                loading="lazy"
+                referrerpolicy="no-referrer"
+                (error)="$any($event.target).style.opacity='0.2'"
+              />
+            </div>
+
+            <!-- Preset gallery -->
+            <div class="mt-3 grid grid-cols-4 gap-2">
+              @for (preset of presetImages; track preset) {
+                <button
+                  type="button"
+                  (click)="selectPreset(preset)"
+                  [class]="vm.editForm().imageUrl === preset
+                    ? 'relative h-16 rounded-lg overflow-hidden border-2 border-purple-400 ring-2 ring-purple-500/40 transition-all'
+                    : 'relative h-16 rounded-lg overflow-hidden border border-white/10 hover:border-white/30 transition-all'"
+                  [attr.aria-pressed]="vm.editForm().imageUrl === preset"
+                >
+                  <img [src]="preset" alt="Preset" class="w-full h-full object-cover" loading="lazy" referrerpolicy="no-referrer" />
+                  @if (vm.editForm().imageUrl === preset) {
+                    <div class="absolute inset-0 bg-purple-500/30 flex items-center justify-center">
+                      <lucide-icon [img]="icons.Check" class="w-5 h-5 text-white"></lucide-icon>
+                    </div>
+                  }
+                </button>
+              }
+            </div>
+
+            <!-- Upload button -->
+            <div class="mt-3 flex items-center gap-3">
+              <label class="flex-1 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-200 hover:bg-white/10 hover:border-purple-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer text-sm">
+                <lucide-icon [img]="icons.Upload" class="w-4 h-4"></lucide-icon>
+                Upload your own
+                <input
+                  type="file"
+                  accept="image/*"
+                  class="hidden"
+                  (change)="onFileSelected($event)"
+                />
+              </label>
+            </div>
+
+            @if (uploadError(); as err) {
+              <p class="text-xs text-red-400 mt-2 flex items-center gap-1">
+                <lucide-icon [img]="icons.AlertCircle" class="w-3 h-3"></lucide-icon>
+                {{ err }}
+              </p>
+            }
+            @if (vm.submitted() && vm.errors().imageUrl; as err) {
+              <p class="text-xs text-red-400 mt-2 flex items-center gap-1">
+                <lucide-icon [img]="icons.AlertCircle" class="w-3 h-3"></lucide-icon>
+                {{ err }}
+              </p>
+            }
           </div>
         </div>
 

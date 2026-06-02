@@ -12,7 +12,7 @@ import {
 import { DashboardViewModel } from '../../viewmodels/dashboard.viewmodel';
 import { TourDetailViewModel } from '../../viewmodels/tour-detail.viewmodel';
 import { LogDetailViewModel } from '../../viewmodels/log-detail.viewmodel';
-import { Tour } from '../../models/tour.model';
+import { Tour, formatDuration } from '../../models/tour.model';
 import { TourLog } from '../../models/tour-log.model';
 
 @Component({
@@ -27,6 +27,7 @@ export class DashboardComponent {
   private readonly tourDetailVm = inject(TourDetailViewModel);
   private readonly logDetailVm = inject(LogDetailViewModel);
   protected readonly icons = { Map, ArrowRight, MapPin, TrendingUp, Clock, CalendarClock };
+  protected formatDuration = formatDuration;
 
   onTourClick(tour: Tour): void {
     this.tourDetailVm.open(tour);
