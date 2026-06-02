@@ -14,12 +14,15 @@ import type * as L from 'leaflet';
 import { TransportType } from '../../models/tour.model';
 import type { Coords, RouteCalculation } from '../../models/geo.model';
 import { MapPickerViewModel } from '../../viewmodels/map-picker.viewmodel';
-
-const DEFAULT_CENTER: [number, number] = [48.2082, 16.3738]; // Vienna
-const DEFAULT_ZOOM = 4;
-/** City-level zoom used when jumping to a freshly placed single marker. */
-const SINGLE_MARKER_ZOOM = 13;
-const ICON_BASE = 'https://unpkg.com/leaflet@1.9.4/dist/images/';
+import {
+  DEFAULT_CENTER,
+  DEFAULT_ZOOM,
+  SINGLE_MARKER_ZOOM,
+  ICON_BASE,
+  ROUTE_FIT_PADDING,
+  ROUTE_FIT_MAX_ZOOM_ROUTE,
+  ROUTE_FIT_MAX_ZOOM_STRAIGHT,
+} from './map-picker.config';
 
 /**
  * Pure view layer:
@@ -223,12 +226,12 @@ export class MapPickerComponent implements OnDestroy {
       this.routeLine = this.leaflet
         .polyline(route, { color: '#a855f7', weight: 4, opacity: 0.85 })
         .addTo(this.map);
-      this.map.fitBounds(this.routeLine.getBounds(), { padding: [50, 50], maxZoom: 14 });
+      this.map.fitBounds(this.routeLine.getBounds(), { padding: ROUTE_FIT_PADDING, maxZoom: ROUTE_FIT_MAX_ZOOM_ROUTE });
     } else if (f && t) {
       this.routeLine = this.leaflet
         .polyline([f, t], { color: '#a855f7', weight: 3, dashArray: '6,8' })
         .addTo(this.map);
-      this.map.fitBounds(this.leaflet.latLngBounds([f, t]), { padding: [50, 50], maxZoom: 12 });
+      this.map.fitBounds(this.leaflet.latLngBounds([f, t]), { padding: ROUTE_FIT_PADDING, maxZoom: ROUTE_FIT_MAX_ZOOM_STRAIGHT });
     }
   }
 }

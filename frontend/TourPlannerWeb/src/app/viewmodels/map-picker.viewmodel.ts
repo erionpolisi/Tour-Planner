@@ -3,6 +3,10 @@ import { NominatimService } from '../services/nominatim.service';
 import { OsrmRoutingService } from '../services/osrm-routing.service';
 import type { Coords, SearchResult, RouteResult } from '../models/geo.model';
 import { TransportType } from '../models/tour.model';
+import {
+  SEARCH_DEBOUNCE_MS,
+  MIN_SEARCH_QUERY_LENGTH,
+} from '../components/map-picker/map-picker.config';
 
 export type ActiveMarker = 'from' | 'to';
 
@@ -104,14 +108,14 @@ export class MapPickerViewModel {
     if (this.searchDebounce) clearTimeout(this.searchDebounce);
 
     const q = value.trim();
-    if (q.length < 2) {
+    if (q.length < MIN_SEARCH_QUERY_LENGTH) {
       this.searchResults.set([]);
       this.searching.set(false);
       return;
     }
 
     this.searching.set(true);
-    this.searchDebounce = setTimeout(() => void this.runSearch(q), 250);
+    this.searchDebounce = setTimeout(() => void this.runSearch(q), SEARCH_DEBOUNCE_MS);
   }
 
   selectSearchResult(r: SearchResult): void {
