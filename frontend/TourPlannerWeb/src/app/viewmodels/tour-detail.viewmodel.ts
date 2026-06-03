@@ -1,7 +1,9 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { ModalService } from '../services/modal.service';
 import { TourService } from '../services/tour.service';
+import { TourLogService } from '../services/tour-log.service';
 import { Tour } from '../models/tour.model';
+import { TourLog, getDifficultyColor, getRatingStars } from '../models/tour-log.model';
 import { validateTourForm, FormErrors } from './create-tour.viewmodel';
 
 @Injectable({
@@ -10,6 +12,7 @@ import { validateTourForm, FormErrors } from './create-tour.viewmodel';
 export class TourDetailViewModel {
   private readonly modalService = inject(ModalService);
   private readonly tourService = inject(TourService);
+  private readonly tourLogService = inject(TourLogService);
 
   /** Reactive view of the active tour: looked up from the live tour list by
    *  id, so status/field updates in the service propagate to the modal
@@ -40,6 +43,29 @@ export class TourDetailViewModel {
     });
   });
   readonly isValid = computed(() => Object.keys(this.errors()).length === 0);
+
+  /** All logs for the currently displayed tour, newest first. */
+  readonly logsForCurrentTour = computed<TourLog[]>(() => {
+    const t = this.tour();
+    if (!t) return [];
+    return this.tourLogService
+      .logs()
+      .filter((l) => l.tourId === t.id)
+      .slice()
+      .sort((a, b) => b.dateTime.localeCompare(a.dateTime));
+  });
+
+  difficultyColor(d: string): string {
+    return getDifficultyColor(d);
+  }
+
+  ratingStars(rating: number): number[] {
+    return getRatingStars(rating);
+  }
+
+  deleteLog(id: number): void {
+    this.tourLogService.deleteLog(id);
+  }
 
   open(tour: Tour): void {
     this.justCompleted.set(false);
