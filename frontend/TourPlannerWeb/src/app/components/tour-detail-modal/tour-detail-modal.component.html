@@ -401,7 +401,10 @@
         <div class="flex gap-3">
           <button
             (click)="vm.save()"
-            class="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold hover:shadow-2xl hover:shadow-purple-500/50 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+            [disabled]="vm.submitted() && !vm.isValid()"
+            [class]="vm.submitted() && !vm.isValid()
+              ? 'flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-500 cursor-not-allowed flex items-center justify-center gap-2'
+              : 'flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold hover:shadow-2xl hover:shadow-purple-500/50 hover:scale-[1.02] transition-all flex items-center justify-center gap-2'"
           >
             <lucide-icon [img]="icons.Save" class="w-4 h-4"></lucide-icon>
             Save
