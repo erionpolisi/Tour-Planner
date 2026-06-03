@@ -11,7 +11,15 @@ export class TourDetailViewModel {
   private readonly modalService = inject(ModalService);
   private readonly tourService = inject(TourService);
 
-  readonly tour = this.modalService.activeTour;
+  /** Reactive view of the active tour: looked up from the live tour list by
+   *  id, so status/field updates in the service propagate to the modal
+   *  immediately. Falls back to the stored snapshot if the tour was deleted
+   *  (so the modal can still close cleanly without flicker). */
+  readonly tour = computed<Tour | null>(() => {
+    const stored = this.modalService.activeTour();
+    if (!stored) return null;
+    return this.tourService.tours().find((t) => t.id === stored.id) ?? stored;
+  });
   readonly editMode = this.modalService.editMode;
   readonly editForm = signal<Partial<Tour>>({});
   readonly justCompleted = signal(false);
