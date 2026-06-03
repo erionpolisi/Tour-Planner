@@ -66,9 +66,13 @@ is exposed at `/openapi/v1.json` in development.
 cd frontend/TourPlannerWeb
 npm install
 npx ng serve
+
 ```
 
 Open <http://localhost:4200>. Live-reload is enabled.
+
+Side Note: Auth is not implemented. Login only needs '@'-symbol for email and any char for password!
+
 
 > Tip: the responsive layout is best tested with the browser device
 > toolbar (Ctrl+Shift+M in Chrome/Edge) at 375 × 667, 768 × 1024 and
