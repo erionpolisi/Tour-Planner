@@ -19,10 +19,17 @@ import {
   Image as ImageIcon,
   Upload,
   Check,
+  Star,
+  MessageSquare,
+  Calendar,
+  TrendingUp,
+  Trash2,
 } from 'lucide-angular';
 import { TourDetailViewModel } from '../../viewmodels/tour-detail.viewmodel';
 import { AddLogViewModel } from '../../viewmodels/add-log.viewmodel';
+import { LogDetailViewModel } from '../../viewmodels/log-detail.viewmodel';
 import { TransportType, formatDuration, getTourImageUrl, Tour, DEFAULT_TOUR_IMAGES } from '../../models/tour.model';
+import { TourLog } from '../../models/tour-log.model';
 import { MapPickerComponent } from '../map-picker/map-picker.component';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -36,7 +43,8 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
 export class TourDetailModalComponent {
   protected readonly vm = inject(TourDetailViewModel);
   private readonly addLogVm = inject(AddLogViewModel);
-  protected readonly icons = { X, MapPin, Clock, Edit2, Save, Plus, Footprints, Bike, Car, CircleCheck, CalendarClock, Trophy, PartyPopper, AlertCircle, Image: ImageIcon, Upload, Check };
+  private readonly logDetailVm = inject(LogDetailViewModel);
+  protected readonly icons = { X, MapPin, Clock, Edit2, Save, Plus, Footprints, Bike, Car, CircleCheck, CalendarClock, Trophy, PartyPopper, AlertCircle, Image: ImageIcon, Upload, Check, Star, MessageSquare, Calendar, TrendingUp, Trash2 };
 
   protected readonly transportIcons: Record<TransportType, LucideIconData> = {
     walking: Footprints,
@@ -58,6 +66,15 @@ export class TourDetailModalComponent {
     if (tour) {
       this.addLogVm.openForTour(tour.id);
     }
+  }
+
+  onLogClick(log: TourLog): void {
+    this.logDetailVm.open(log);
+  }
+
+  onDeleteLog(event: Event, id: number): void {
+    event.stopPropagation();
+    this.vm.deleteLog(id);
   }
 
   protected getHours(minutes: number | undefined): number {
