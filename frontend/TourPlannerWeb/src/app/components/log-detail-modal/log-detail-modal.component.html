@@ -6,7 +6,7 @@
   >
     <!-- Modal -->
     <div
-      class="relative w-full max-w-lg mx-4 p-8 rounded-2xl bg-gray-900/95 border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
+      class="relative w-full max-w-lg mx-4 p-6 md:p-8 rounded-2xl bg-gray-900/95 border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
       (click)="$event.stopPropagation()"
     >
       <!-- Close -->
@@ -42,7 +42,7 @@
         </div>
 
         <!-- Stats -->
-        <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div class="p-4 rounded-xl bg-white/5 border border-white/10">
             <div class="flex items-center gap-1 text-xs text-gray-400 mb-1">
               <lucide-icon [img]="icons.TrendingUp" class="w-3 h-3"></lucide-icon>
@@ -137,7 +137,7 @@
           </div>
 
           <!-- Distance & Duration (read-only — inherited from tour) -->
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="text-xs text-gray-400 mb-1 block">
                 Distance (km)
@@ -164,7 +164,7 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="text-xs text-gray-400 mb-1 block">Rating (1-5) <span class="text-red-400">*</span></label>
               <input

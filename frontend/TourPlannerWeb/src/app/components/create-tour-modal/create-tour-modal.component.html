@@ -4,7 +4,7 @@
     (click)="vm.close()"
   >
     <div
-      class="relative w-full max-w-2xl mx-4 p-8 rounded-2xl bg-gray-900/95 border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
+      class="relative w-full max-w-2xl mx-4 p-6 md:p-8 rounded-2xl bg-gray-900/95 border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
       (click)="$event.stopPropagation()"
     >
       <button
@@ -63,7 +63,7 @@
         </div>
 
         <!-- From / To -->
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="text-xs text-gray-400 mb-1 block">From <span class="text-red-400">*</span> <span class="text-gray-600">— set via map</span></label>
             <input
@@ -135,7 +135,7 @@
         </div>
 
         <!-- Distance / Duration -->
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="text-xs text-gray-400 mb-1 block">
               Distance (km) <span class="text-red-400">*</span>
@@ -230,7 +230,7 @@
           </div>
 
           <!-- Preset gallery -->
-          <div class="mt-3 grid grid-cols-4 gap-2">
+          <div class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
             @for (preset of presetImages; track preset) {
               <button
                 type="button"

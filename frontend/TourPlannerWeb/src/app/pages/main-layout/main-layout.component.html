@@ -1,7 +1,15 @@
 <div class="h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col overflow-hidden">
   <app-navbar></app-navbar>
-  <div class="flex flex-1 min-h-0">
+  <div class="flex flex-1 min-h-0 relative">
     <app-sidebar></app-sidebar>
+    @if (layoutService.sidebarOpen()) {
+      <button
+        type="button"
+        aria-label="Close navigation"
+        (click)="layoutService.closeSidebar()"
+        class="lg:hidden fixed inset-0 top-16 md:top-20 z-30 bg-black/60 backdrop-blur-sm"
+      ></button>
+    }
     <router-outlet></router-outlet>
   </div>
 </div>

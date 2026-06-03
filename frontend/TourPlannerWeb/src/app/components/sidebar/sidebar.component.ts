@@ -1,5 +1,6 @@
 import { Component, inject, computed } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterLink, RouterLinkActive } from '@angular/router';
+import { LayoutService } from '../../services/layout.service';
 import {
   LucideAngularModule,
   LucideIconData,
@@ -19,6 +20,7 @@ import { TourLogService } from '../../services/tour-log.service';
 })
 export class SidebarComponent {
   protected readonly tourService = inject(TourService);
+  protected readonly layoutService = inject(LayoutService);
   private readonly tourLogService = inject(TourLogService);
 
   protected readonly navItems = [
