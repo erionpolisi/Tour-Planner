@@ -1,7 +1,7 @@
-import { Injectable, inject, computed } from '@angular/core';
+import { Injectable, inject, computed, signal } from '@angular/core';
 import { TourService } from '../services/tour.service';
 import { SearchService } from '../services/search.service';
-import { TransportType, TourStatus } from '../models/tour.model';
+import { Tour, TransportType, TourStatus } from '../models/tour.model';
 
 @Injectable()
 export class TourListViewModel {
@@ -10,6 +10,9 @@ export class TourListViewModel {
 
   readonly transportFilter = this.tourService.transportFilter;
   readonly statusFilter = this.tourService.statusFilter;
+
+  /** Tour that the user has flagged for deletion — drives the confirm dialog. */
+  readonly pendingDelete = signal<Tour | null>(null);
 
   readonly filteredTours = computed(() => {
     const query = this.searchService.query().toLowerCase();
@@ -23,8 +26,20 @@ export class TourListViewModel {
     );
   });
 
-  deleteTour(id: number): void {
-    this.tourService.deleteTour(id);
+  requestDelete(tour: Tour): void {
+    this.pendingDelete.set(tour);
+  }
+
+  cancelDelete(): void {
+    this.pendingDelete.set(null);
+  }
+
+  confirmDelete(): void {
+    const t = this.pendingDelete();
+    if (t) {
+      this.tourService.deleteTour(t.id);
+      this.pendingDelete.set(null);
+    }
   }
 
   setTransportFilter(type: TransportType | 'all'): void {
@@ -33,5 +48,12 @@ export class TourListViewModel {
 
   setStatusFilter(status: TourStatus | 'all'): void {
     this.tourService.setStatusFilter(status);
+  }
+
+  /** Reset all filters (transport + status) to 'all'. Called when leaving
+   *  the page so the next visit doesn't inherit stale filter state. */
+  resetFilters(): void {
+    this.tourService.setTransportFilter('all');
+    this.tourService.setStatusFilter('all');
   }
 }

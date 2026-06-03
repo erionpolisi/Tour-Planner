@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { LucideAngularModule, Plus, Footprints, Bike, Car, LayoutGrid, LucideIconData, CircleCheck, CalendarClock, ListFilter } from 'lucide-angular';
+import { LucideAngularModule, Plus, Footprints, Bike, Car, LayoutGrid, LucideIconData, CircleCheck, CalendarClock, ListFilter, Trash2, AlertTriangle, X } from 'lucide-angular';
 import { TourCardComponent } from '../tour-card/tour-card.component';
 import { Tour, TransportType, TourStatus } from '../../models/tour.model';
 import { TourListViewModel } from '../../viewmodels/tour-list.viewmodel';
@@ -15,7 +15,7 @@ export class TourListComponent {
   protected readonly vm = inject(TourListViewModel);
   private readonly createTourVm = inject(CreateTourViewModel);
   private readonly tourDetailVm = inject(TourDetailViewModel);
-  protected readonly icons = { Plus, Footprints, Bike, Car, LayoutGrid, CircleCheck, CalendarClock, ListFilter };
+  protected readonly icons = { Plus, Footprints, Bike, Car, LayoutGrid, CircleCheck, CalendarClock, ListFilter, Trash2, AlertTriangle, X };
 
   protected readonly transportModes: { type: TransportType | 'all'; icon: LucideIconData; label: string }[] = [
     { type: 'all', icon: LayoutGrid, label: 'All' },
@@ -43,7 +43,16 @@ export class TourListComponent {
   }
 
   onDeleteTour(id: number): void {
-    this.vm.deleteTour(id);
+    const t = this.vm.filteredTours().find((x) => x.id === id);
+    if (t) this.vm.requestDelete(t);
+  }
+
+  onConfirmDelete(): void {
+    this.vm.confirmDelete();
+  }
+
+  onCancelDelete(): void {
+    this.vm.cancelDelete();
   }
 
   onTransportFilter(type: TransportType | 'all'): void {

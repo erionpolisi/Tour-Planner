@@ -1,7 +1,6 @@
 import { Component, OnDestroy, inject } from '@angular/core';
 import { TourListComponent } from '../../components/tour-list/tour-list.component';
 import { TourListViewModel } from '../../viewmodels/tour-list.viewmodel';
-import { TourService } from '../../services/tour.service';
 
 @Component({
   selector: 'app-tours-page',
@@ -11,10 +10,9 @@ import { TourService } from '../../services/tour.service';
   template: '<app-tour-list></app-tour-list>',
 })
 export class ToursPageComponent implements OnDestroy {
-  private readonly tourService = inject(TourService);
+  private readonly vm = inject(TourListViewModel);
 
   ngOnDestroy(): void {
-    this.tourService.setTransportFilter('all');
-    this.tourService.setStatusFilter('all');
+    this.vm.resetFilters();
   }
 }

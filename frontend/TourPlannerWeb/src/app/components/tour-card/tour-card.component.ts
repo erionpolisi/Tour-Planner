@@ -1,6 +1,6 @@
 import { Component, input, output } from '@angular/core';
 import { LucideAngularModule, LucideIconData, MapPin, Clock, Edit2, Trash2, Footprints, Bike, Car, CircleCheck, CalendarClock } from 'lucide-angular';
-import { Tour, TransportType } from '../../models/tour.model';
+import { Tour, TransportType, formatDuration, getTourImageUrl } from '../../models/tour.model';
 
 @Component({
   selector: 'app-tour-card',
@@ -20,6 +20,12 @@ export class TourCardComponent {
     cycling: Bike,
     driving: Car,
   };
+
+  protected formatDuration = formatDuration;
+
+  protected imageUrl(): string {
+    return getTourImageUrl(this.tour());
+  }
 
   onCardClick(): void {
     this.open.emit(this.tour());
