@@ -49,4 +49,11 @@ export class TourListViewModel {
   setStatusFilter(status: TourStatus | 'all'): void {
     this.tourService.setStatusFilter(status);
   }
+
+  /** Reset all filters (transport + status) to 'all'. Called when leaving
+   *  the page so the next visit doesn't inherit stale filter state. */
+  resetFilters(): void {
+    this.tourService.setTransportFilter('all');
+    this.tourService.setStatusFilter('all');
+  }
 }
