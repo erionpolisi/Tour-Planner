@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NavbarComponent } from '../../components/navbar/navbar.component';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
+import { LayoutService } from '../../services/layout.service';
 import { TourDetailModalComponent } from '../../components/tour-detail-modal/tour-detail-modal.component';
 import { LogDetailModalComponent } from '../../components/log-detail-modal/log-detail-modal.component';
 import { CreateTourModalComponent } from '../../components/create-tour-modal/create-tour-modal.component';
@@ -26,4 +27,6 @@ import { AddLogModalComponent } from '../../components/add-log-modal/add-log-mod
   ],
   templateUrl: './main-layout.component.html',
 })
-export class MainLayoutComponent {}
+export class MainLayoutComponent {
+  protected readonly layoutService = inject(LayoutService);
+}

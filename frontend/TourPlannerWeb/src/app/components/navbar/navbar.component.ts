@@ -1,8 +1,9 @@
 import { Component, ElementRef, ViewChild, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { LucideAngularModule, Map, Search, User, LogOut, X } from 'lucide-angular';
+import { LucideAngularModule, Map, Search, User, LogOut, X, Menu } from 'lucide-angular';
 import { SearchService } from '../../services/search.service';
 import { AuthService } from '../../services/auth.service';
+import { LayoutService } from '../../services/layout.service';
 
 @Component({
   selector: 'app-navbar',
@@ -11,12 +12,13 @@ import { AuthService } from '../../services/auth.service';
 })
 export class NavbarComponent {
   protected readonly searchService = inject(SearchService);
+  protected readonly layoutService = inject(LayoutService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
   @ViewChild('searchInput') private searchInputRef?: ElementRef<HTMLInputElement>;
 
-  protected readonly icons = { Map, Search, User, LogOut, X };
+  protected readonly icons = { Map, Search, User, LogOut, X, Menu };
   protected readonly currentUser = this.authService.currentUser;
 
   onSearch(event: Event): void {
