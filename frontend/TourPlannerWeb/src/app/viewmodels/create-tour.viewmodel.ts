@@ -22,6 +22,7 @@ export interface FormErrors {
   description?: string;
   from?: string;
   to?: string;
+  transportType?: string;
   distance?: string;
   duration?: string;
   imageUrl?: string;
@@ -122,6 +123,7 @@ export function validateTourForm(f: {
   description: string;
   from: string;
   to: string;
+  transportType?: TransportType | string;
   distance: number;
   duration: number;
   imageUrl?: string;
@@ -138,6 +140,11 @@ export function validateTourForm(f: {
 
   if (!f.from || !f.from.trim()) errors.from = 'Pick a start point on the map.';
   if (!f.to || !f.to.trim()) errors.to = 'Pick a destination on the map.';
+
+  const ALLOWED_TRANSPORT: TransportType[] = ['walking', 'cycling', 'driving'];
+  if (!f.transportType || !ALLOWED_TRANSPORT.includes(f.transportType as TransportType)) {
+    errors.transportType = 'Pick a valid transport type.';
+  }
 
   if (!Number.isFinite(f.distance) || f.distance <= 0) errors.distance = 'Pick a route on the map.';
   else if (f.distance > 100000) errors.distance = 'Distance is unrealistically large.';

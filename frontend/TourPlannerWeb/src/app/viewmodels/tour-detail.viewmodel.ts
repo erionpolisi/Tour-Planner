@@ -33,6 +33,7 @@ export class TourDetailViewModel {
       description: f.description ?? '',
       from: f.from ?? '',
       to: f.to ?? '',
+      transportType: f.transportType,
       distance: f.distance ?? 0,
       duration: f.duration ?? 0,
       imageUrl: f.imageUrl ?? '',
