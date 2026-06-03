@@ -64,6 +64,11 @@ export class TourDetailViewModel {
   }
 
   close(): void {
+    // Reset transient form state so a re-open of the modal starts clean
+    // (no leftover validation errors or stale route suggestions).
+    this.submitted.set(false);
+    this.routeSuggestion.set(null);
+    this.editForm.set({});
     this.modalService.close();
   }
 
