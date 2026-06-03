@@ -5,6 +5,8 @@ import { Tour, TransportType, TourStatus } from '../../models/tour.model';
 import { TourListViewModel } from '../../viewmodels/tour-list.viewmodel';
 import { CreateTourViewModel } from '../../viewmodels/create-tour.viewmodel';
 import { TourDetailViewModel } from '../../viewmodels/tour-detail.viewmodel';
+import { SearchService } from '../../services/search.service';
+import { TourService } from '../../services/tour.service';
 
 @Component({
   selector: 'app-tour-list',
@@ -15,6 +17,8 @@ export class TourListComponent {
   protected readonly vm = inject(TourListViewModel);
   private readonly createTourVm = inject(CreateTourViewModel);
   private readonly tourDetailVm = inject(TourDetailViewModel);
+  protected readonly searchService = inject(SearchService);
+  protected readonly tourService = inject(TourService);
   protected readonly icons = { Plus, Footprints, Bike, Car, LayoutGrid, CircleCheck, CalendarClock, ListFilter, Trash2, AlertTriangle, X };
 
   protected readonly transportModes: { type: TransportType | 'all'; icon: LucideIconData; label: string }[] = [
