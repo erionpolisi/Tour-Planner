@@ -79,12 +79,12 @@ export class AddLogViewModel {
   readonly isValid = computed(() => Object.keys(this.errors()).length === 0);
 
   open(): void {
-    const tours = this.tourService.tours();
     this.tourSearch.set('');
     this.submitted.set(false);
     this.form.set({
       ...EMPTY_FORM,
-      tourId: tours.length ? tours[0].id : 0,
+      // No tour preselected — user must explicitly pick one.
+      tourId: 0,
       dateTime: defaultDateTime(),
     });
     this.modalService.openAddLog();
