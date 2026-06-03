@@ -2,15 +2,35 @@ import { Injectable, inject, signal, computed } from '@angular/core';
 import { ModalService } from '../services/modal.service';
 import { TourService } from '../services/tour.service';
 import { TourLogService } from '../services/tour-log.service';
+import {
+  Difficulty,
+  DIFFICULTIES,
+  LogFormErrors,
+  getDifficultyColor,
+  validateLogForm,
+} from '../models/tour-log.model';
+import { formatDuration } from '../models/tour.model';
 
 interface AddLogForm {
   tourId: number;
   dateTime: string;
   comment: string;
-  difficulty: 'easy' | 'medium' | 'hard';
-  totalDistance: number;
-  duration: string;
+  difficulty: Difficulty;
   rating: number;
+}
+
+const EMPTY_FORM: AddLogForm = {
+  tourId: 0,
+  dateTime: '',
+  comment: '',
+  difficulty: 'medium',
+  rating: 3,
+};
+
+function defaultDateTime(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 @Injectable({
@@ -24,6 +44,9 @@ export class AddLogViewModel {
   readonly isOpen = this.modalService.addLogOpen;
   readonly availableTours = computed(() => this.tourService.tours());
   readonly tourSearch = signal('');
+  readonly submitted = signal(false);
+
+  readonly difficulties = DIFFICULTIES;
 
   readonly filteredTours = computed(() => {
     const q = this.tourSearch().toLowerCase();
@@ -33,55 +56,55 @@ export class AddLogViewModel {
       (t) =>
         t.name.toLowerCase().includes(q) ||
         t.from.toLowerCase().includes(q) ||
-        t.to.toLowerCase().includes(q)
+        t.to.toLowerCase().includes(q),
     );
   });
 
+  readonly form = signal<AddLogForm>({ ...EMPTY_FORM });
+
+  /** Reactive lookup of the selected tour — source of truth for distance/duration. */
   readonly selectedTour = computed(() => {
     const id = this.form().tourId;
     return this.tourService.tours().find((t) => t.id === id) ?? null;
   });
 
-  readonly form = signal<AddLogForm>({
-    tourId: 0,
-    dateTime: '',
-    comment: '',
-    difficulty: 'medium',
-    totalDistance: 0,
-    duration: '',
-    rating: 3,
+  /** Read-only display values inherited from the selected tour. */
+  readonly inheritedDistanceKm = computed(() => this.selectedTour()?.distance ?? null);
+  readonly inheritedDurationStr = computed(() => {
+    const t = this.selectedTour();
+    return t ? formatDuration(t.duration) : null;
   });
+
+  readonly errors = computed<LogFormErrors>(() => validateLogForm(this.form()));
+  readonly isValid = computed(() => Object.keys(this.errors()).length === 0);
 
   open(): void {
     const tours = this.tourService.tours();
     this.tourSearch.set('');
+    this.submitted.set(false);
     this.form.set({
+      ...EMPTY_FORM,
       tourId: tours.length ? tours[0].id : 0,
-      dateTime: new Date().toISOString().slice(0, 16).replace('T', ' '),
-      comment: '',
-      difficulty: 'medium',
-      totalDistance: 0,
-      duration: '',
-      rating: 3,
+      dateTime: defaultDateTime(),
     });
     this.modalService.openAddLog();
   }
 
   openForTour(tourId: number): void {
     this.tourSearch.set('');
+    this.submitted.set(false);
     this.form.set({
+      ...EMPTY_FORM,
       tourId,
-      dateTime: new Date().toISOString().slice(0, 16).replace('T', ' '),
-      comment: '',
-      difficulty: 'medium',
-      totalDistance: 0,
-      duration: '',
-      rating: 3,
+      dateTime: defaultDateTime(),
     });
     this.modalService.openAddLog();
   }
 
   close(): void {
+    this.submitted.set(false);
+    this.tourSearch.set('');
+    this.form.set({ ...EMPTY_FORM });
     this.modalService.close();
   }
 
@@ -94,25 +117,33 @@ export class AddLogViewModel {
     this.tourSearch.set('');
   }
 
-  updateField(field: keyof AddLogForm, value: string | number): void {
+  updateField<K extends keyof AddLogForm>(field: K, value: AddLogForm[K]): void {
     this.form.update((f) => ({ ...f, [field]: value }));
   }
 
-  save(): void {
+  /** Template helper, exposed via VM to keep components thin. */
+  difficultyColor(d: string): string {
+    return getDifficultyColor(d);
+  }
+
+  save(): boolean {
+    this.submitted.set(true);
+    if (!this.isValid()) return false;
     const f = this.form();
-    if (!f.tourId || !f.comment) return;
-    const tour = this.tourService.tours().find((t) => t.id === f.tourId);
-    if (!tour) return;
+    const tour = this.selectedTour();
+    if (!tour) return false;
     this.tourLogService.addLog({
-      tourId: f.tourId,
+      tourId: tour.id,
       tourName: tour.name,
-      dateTime: f.dateTime,
-      comment: f.comment,
+      dateTime: f.dateTime.trim(),
+      comment: f.comment.trim(),
       difficulty: f.difficulty,
-      totalDistance: f.totalDistance,
-      duration: f.duration || '0h 00m',
+      // Distance & duration are inherited from the tour — never user input.
+      totalDistance: tour.distance,
+      duration: formatDuration(tour.duration),
       rating: f.rating,
     });
-    this.modalService.close();
+    this.close();
+    return true;
   }
 }
