@@ -1,6 +1,7 @@
-import { Component, OnDestroy, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { TourListComponent } from '../../components/tour-list/tour-list.component';
 import { TourListViewModel } from '../../viewmodels/tour-list.viewmodel';
+import { SearchService } from '../../services/search.service';
 
 @Component({
   selector: 'app-tours-page',
@@ -9,10 +10,16 @@ import { TourListViewModel } from '../../viewmodels/tour-list.viewmodel';
   host: { class: 'flex-1 min-h-0 overflow-y-auto' },
   template: '<app-tour-list></app-tour-list>',
 })
-export class ToursPageComponent implements OnDestroy {
+export class ToursPageComponent implements OnInit, OnDestroy {
   private readonly vm = inject(TourListViewModel);
+  private readonly searchService = inject(SearchService);
+
+  ngOnInit(): void {
+    this.searchService.setScope('tours');
+  }
 
   ngOnDestroy(): void {
     this.vm.resetFilters();
+    this.searchService.setScope(null);
   }
 }

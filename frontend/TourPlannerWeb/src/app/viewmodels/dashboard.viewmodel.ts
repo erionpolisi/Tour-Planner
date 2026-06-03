@@ -1,6 +1,7 @@
 import { Injectable, inject, computed } from '@angular/core';
 import { TourService } from '../services/tour.service';
 import { TourLogService } from '../services/tour-log.service';
+import { getDifficultyColor } from '../models/tour-log.model';
 
 @Injectable()
 export class DashboardViewModel {
@@ -18,11 +19,6 @@ export class DashboardViewModel {
   });
 
   getDifficultyColor(difficulty: string): string {
-    switch (difficulty) {
-      case 'easy': return 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30';
-      case 'medium': return 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30';
-      case 'hard': return 'text-red-400 bg-red-500/20 border-red-500/30';
-      default: return 'text-gray-400 bg-gray-500/20 border-gray-500/30';
-    }
+    return getDifficultyColor(difficulty);
   }
 }

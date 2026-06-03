@@ -9,13 +9,27 @@
   </div>
   <div class="flex items-center gap-4">
     <div class="relative">
-      <lucide-icon [img]="icons.Search" class="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2"></lucide-icon>
+      <lucide-icon [img]="icons.Search" class="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></lucide-icon>
       <input
+        #searchInput
         type="text"
-        placeholder="Search tours..."
+        [placeholder]="searchService.placeholder()"
+        [value]="searchService.query()"
+        [disabled]="!searchService.active()"
         (input)="onSearch($event)"
-        class="w-80 h-11 pl-12 pr-4 rounded-xl bg-white/5 border border-white/10 text-white text-center placeholder:text-gray-500 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all"
+        class="w-96 h-11 pl-14 pr-12 rounded-xl bg-white/5 border border-white/10 text-white text-left placeholder:text-gray-500 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
       />
+      @if (searchService.query()) {
+        <button
+          type="button"
+          (click)="onClear()"
+          title="Clear search"
+          aria-label="Clear search"
+          class="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-md bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+        >
+          <lucide-icon [img]="icons.X" class="w-3.5 h-3.5"></lucide-icon>
+        </button>
+      }
     </div>
     <a routerLink="/profile" class="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform" [title]="currentUser()?.email ?? 'Profile'">
       <lucide-icon [img]="icons.User" class="w-5 h-5 text-white"></lucide-icon>
