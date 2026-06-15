@@ -3,4 +3,5 @@
   <Project Path="TourPlanner.BusinessLayer/TourPlanner.BusinessLayer.csproj" />
   <Project Path="TourPlanner.DataAccessLayer/TourPlanner.DataAccessLayer.csproj" />
   <Project Path="TourPlanner.Domain/TourPlanner.Domain.csproj" />
+  <Project Path="TourPlanner.Tests/TourPlanner.Tests.csproj" />
 </Solution>
