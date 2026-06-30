@@ -1,27 +1,20 @@
 import { Injectable, signal, computed } from '@angular/core';
-import type { Signal } from '@angular/core';
 import { TourLog } from '../models/tour-log.model';
 
+/**
+ * NOTE: Logs are still mock-backed until the backend TourLogsController exists.
+ * The shape already matches the future API contract (string ids, ISO datetimes,
+ * duration in minutes), so swapping to HttpClient later will be a drop-in.
+ */
 @Injectable({
   providedIn: 'root',
 })
 export class TourLogService {
-  private readonly _logs = signal<TourLog[]>([
-    { id: 1, tourId: 1, tourName: 'Alpine Adventure', dateTime: '2026-04-15 09:00', comment: 'Great weather, amazing views of the Alps!', difficulty: 'medium', totalDistance: 295, duration: '4h 25m', rating: 5 },
-    { id: 2, tourId: 1, tourName: 'Alpine Adventure', dateTime: '2026-03-20 08:30', comment: 'Rainy but still enjoyable. Roads were a bit slippery.', difficulty: 'hard', totalDistance: 302, duration: '5h 10m', rating: 3 },
-    { id: 3, tourId: 2, tourName: 'Coastal Route', dateTime: '2026-04-01 07:00', comment: 'Beautiful coastline, stopped for lunch in a small village.', difficulty: 'easy', totalDistance: 348, duration: '5h 30m', rating: 4 },
-    { id: 4, tourId: 3, tourName: 'Mountain Trail', dateTime: '2026-04-10 06:00', comment: 'Challenging climb but rewarding. Perfect trail conditions.', difficulty: 'hard', totalDistance: 175, duration: '3h 15m', rating: 5 },
-    { id: 5, tourId: 4, tourName: 'Historic Cities', dateTime: '2026-03-28 10:00', comment: 'Loved the architecture in both cities. Must visit again!', difficulty: 'easy', totalDistance: 538, duration: '7h 30m', rating: 4 },
-    { id: 6, tourId: 5, tourName: 'River Valley', dateTime: '2026-04-05 11:00', comment: 'Scenic river path, very peaceful.', difficulty: 'easy', totalDistance: 148, duration: '2h 50m', rating: 4 },
-    { id: 7, tourId: 6, tourName: 'Desert Highway', dateTime: '2026-02-14 05:30', comment: 'Hot but incredible sunset views along the highway.', difficulty: 'medium', totalDistance: 472, duration: '6h 00m', rating: 5 },
-    { id: 8, tourId: 3, tourName: 'Mountain Trail', dateTime: '2026-04-22 07:00', comment: 'Second attempt, much better pace this time.', difficulty: 'medium', totalDistance: 180, duration: '2h 55m', rating: 5 },
-  ]);
-
-  private _nextId = 9;
+  private readonly _logs = signal<TourLog[]>([]);
 
   readonly logs = this._logs.asReadonly();
 
-  logsForTour(tourId: number) {
+  logsForTour(tourId: string) {
     return computed(() => this._logs().filter((l) => l.tourId === tourId));
   }
 
@@ -43,7 +36,7 @@ export class TourLogService {
     return (logs.reduce((sum, l) => sum + l.rating, 0) / logs.length).toFixed(1);
   });
 
-  deleteLog(id: number): void {
+  deleteLog(id: string): void {
     this._logs.update((logs) => logs.filter((l) => l.id !== id));
   }
 
@@ -52,6 +45,7 @@ export class TourLogService {
   }
 
   addLog(log: Omit<TourLog, 'id'>): void {
-    this._logs.update((logs) => [...logs, { ...log, id: this._nextId++ }]);
+    const newLog: TourLog = { ...log, id: crypto.randomUUID() };
+    this._logs.update((logs) => [...logs, newLog]);
   }
 }

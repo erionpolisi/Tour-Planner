@@ -6,8 +6,8 @@ import { TourLog, Difficulty, DIFFICULTIES, LogFormErrors, getDifficultyColor, v
 import { formatDuration } from '../models/tour.model';
 
 interface EditLogForm {
-  id: number;
-  tourId: number;
+  id: string;
+  tourId: string;
   tourName: string;
   dateTime: string;
   comment: string;
@@ -16,8 +16,8 @@ interface EditLogForm {
 }
 
 const EMPTY_FORM: EditLogForm = {
-  id: 0,
-  tourId: 0,
+  id: '',
+  tourId: '',
   tourName: '',
   dateTime: '',
   comment: '',
@@ -55,7 +55,8 @@ export class LogDetailViewModel {
   readonly inheritedDurationStr = computed(() => {
     const t = this.linkedTour();
     if (t) return formatDuration(t.duration);
-    return this.log()?.duration ?? null;
+    const log = this.log();
+    return log ? formatDuration(log.duration) : null;
   });
 
   readonly errors = computed<LogFormErrors>(() => validateLogForm(this.editForm()));
@@ -113,7 +114,7 @@ export class LogDetailViewModel {
     const tour = this.tourService.tours().find((t) => t.id === f.tourId);
     // Distance/duration are always derived from the tour — read-only by design.
     const totalDistance = tour ? tour.distance : (this.log()?.totalDistance ?? 0);
-    const duration = tour ? formatDuration(tour.duration) : (this.log()?.duration ?? '0h 00m');
+    const duration = tour ? tour.duration : (this.log()?.duration ?? 0);
     this.tourLogService.updateLog({
       id: f.id,
       tourId: f.tourId,

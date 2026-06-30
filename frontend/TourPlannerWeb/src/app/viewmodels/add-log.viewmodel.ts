@@ -12,7 +12,7 @@ import {
 import { formatDuration } from '../models/tour.model';
 
 interface AddLogForm {
-  tourId: number;
+  tourId: string;
   dateTime: string;
   comment: string;
   difficulty: Difficulty;
@@ -20,7 +20,7 @@ interface AddLogForm {
 }
 
 const EMPTY_FORM: AddLogForm = {
-  tourId: 0,
+  tourId: '',
   dateTime: '',
   comment: '',
   difficulty: 'medium',
@@ -84,13 +84,13 @@ export class AddLogViewModel {
     this.form.set({
       ...EMPTY_FORM,
       // No tour preselected — user must explicitly pick one.
-      tourId: 0,
+      tourId: '',
       dateTime: defaultDateTime(),
     });
     this.modalService.openAddLog();
   }
 
-  openForTour(tourId: number): void {
+  openForTour(tourId: string): void {
     this.tourSearch.set('');
     this.submitted.set(false);
     this.form.set({
@@ -112,7 +112,7 @@ export class AddLogViewModel {
     this.tourSearch.set(query);
   }
 
-  selectTour(tourId: number): void {
+  selectTour(tourId: string): void {
     this.form.update((f) => ({ ...f, tourId }));
     this.tourSearch.set('');
   }
@@ -140,7 +140,7 @@ export class AddLogViewModel {
       difficulty: f.difficulty,
       // Distance & duration are inherited from the tour — never user input.
       totalDistance: tour.distance,
-      duration: formatDuration(tour.duration),
+      duration: tour.duration,
       rating: f.rating,
     });
     this.close();

@@ -51,7 +51,7 @@ export class LogsPageComponent implements OnInit, OnDestroy {
     this.logDetailVm.openInEditMode(log);
   }
 
-  onDeleteLog(event: Event, id: number): void {
+  onDeleteLog(event: Event, id: string): void {
     event.stopPropagation();
     this.vm.deleteLog(id);
   }

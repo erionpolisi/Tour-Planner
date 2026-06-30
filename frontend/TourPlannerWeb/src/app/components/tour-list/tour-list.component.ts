@@ -46,7 +46,7 @@ export class TourListComponent {
     this.tourDetailVm.openInEditMode(tour);
   }
 
-  onDeleteTour(id: number): void {
+  onDeleteTour(id: string): void {
     const t = this.vm.filteredTours().find((x) => x.id === id);
     if (t) this.vm.requestDelete(t);
   }
