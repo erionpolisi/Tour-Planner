@@ -11,6 +11,7 @@ using Serilog;
 using TourPlanner.API.Middleware;
 using TourPlanner.BusinessLayer.Services;
 using TourPlanner.BusinessLayer.Services.Auth;
+using TourPlanner.BusinessLayer.Services.ImportExport;
 using TourPlanner.BusinessLayer.Services.Routing;
 using TourPlanner.DataAccessLayer;
 using TourPlanner.DataAccessLayer.Interceptors;
@@ -70,6 +71,7 @@ builder.Services.AddScoped<ITourService, TourService>();
 builder.Services.AddScoped<ITourLogService, TourLogService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthSessionService, AuthSessionService>();
+builder.Services.AddScoped<ITourImportExportService, TourImportExportService>();
 builder.Services.AddSingleton<IPasswordPolicy, DefaultPasswordPolicy>();
 
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();

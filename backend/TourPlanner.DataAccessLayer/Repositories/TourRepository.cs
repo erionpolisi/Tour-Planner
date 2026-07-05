@@ -66,6 +66,16 @@ public class TourRepository : ITourRepository
         return true;
     }
 
+    public async Task<List<Tour>> GetAllWithLogsAsync(CancellationToken ct = default)
+    {
+        _logger.LogInformation("Loading all tours with their logs (for export)");
+        // AsNoTracking is safe here: caller only serializes the result.
+        return await _db.Tours
+            .AsNoTracking()
+            .Include(t => t.Logs.OrderBy(l => l.LoggedAt))
+            .ToListAsync(ct);
+    }
+
     public async Task<List<TourSearchHit>> SearchAsync(string query, int limit, CancellationToken ct = default)
     {
         // Callers (TourService) guarantee non-empty; be defensive anyway.

@@ -34,6 +34,13 @@ type UpdateTourBody = Omit<Tour, 'id'>;
 
 const API_BASE = 'http://localhost:5102/api/tours';
 
+/** Backend import summary as returned by `POST /api/tours/import`. */
+export interface ImportResult {
+  imported: number;
+  total: number;
+  errors: { index: number; tourName: string; message: string }[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -142,6 +149,64 @@ export class TourService {
     const current = this._tours().find((t) => t.id === id);
     if (!current) return;
     this.updateTour({ ...current, status: 'completed' });
+  }
+
+  // -------------------------------------------------------------------
+  //  Import / Export
+  // -------------------------------------------------------------------
+
+  /**
+   * Download every tour + logs as a JSON file. Uses the browser's
+   * <c>&lt;a download&gt;</c> trick: fetch the bundle, wrap it in a Blob,
+   * assign to a hidden anchor, click it. No server-side redirect needed.
+   */
+  async exportAll(): Promise<void> {
+    const response = await fetch(`${API_BASE}/export`, {
+      // The auth interceptor stamps this request with Authorization automatically.
+      credentials: 'same-origin',
+    });
+    if (!response.ok) {
+      throw new Error(`Export failed with ${response.status}`);
+    }
+    const blob = await response.blob();
+    const suggested = this.filenameFromDisposition(response.headers.get('Content-Disposition'))
+      ?? `tourplanner-export-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = suggested;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Import the given bundle. Refreshes the local tour list on success so
+   * newly imported tours show up immediately.
+   */
+  async importBundle(bundle: unknown): Promise<ImportResult> {
+    const result = await fetch(`${API_BASE}/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bundle),
+    });
+    if (!result.ok) {
+      const bodyText = await result.text().catch(() => '');
+      throw new Error(`Import failed with ${result.status}: ${bodyText || result.statusText}`);
+    }
+    const summary = (await result.json()) as ImportResult;
+    // Reload so imported tours become visible without a manual refresh.
+    this.reload();
+    return summary;
+  }
+
+  /** Extract the `filename="…"` value from a Content-Disposition header. */
+  private filenameFromDisposition(header: string | null): string | null {
+    if (!header) return null;
+    const match = /filename\*?=(?:UTF-8''|")?([^;"]+)/i.exec(header);
+    return match ? decodeURIComponent(match[1].replace(/^"|"$/g, '')) : null;
   }
 
   /** Normalise an incoming DTO so all optional fields have safe defaults. */
