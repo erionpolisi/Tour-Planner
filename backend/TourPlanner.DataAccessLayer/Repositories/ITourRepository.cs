@@ -15,6 +15,9 @@ public interface ITourRepository
     Task UpdateAsync(Tour tour);
     Task<bool> DeleteAsync(Guid id);
 
+    /// <summary>Like <see cref="GetAllAsync"/> but eager-loads each tour's logs. Used by the export flow.</summary>
+    Task<List<Tour>> GetAllWithLogsAsync(CancellationToken ct = default);
+
     /// <summary>
     /// PostgreSQL full-text search over tours and their logs. Returns each
     /// matching tour together with the specific logs that also matched

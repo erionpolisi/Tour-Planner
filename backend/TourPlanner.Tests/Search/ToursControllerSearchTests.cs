@@ -5,6 +5,7 @@ using NUnit.Framework;
 using TourPlanner.API.Controllers;
 using TourPlanner.API.Dtos.Tours;
 using TourPlanner.BusinessLayer.Services;
+using TourPlanner.BusinessLayer.Services.ImportExport;
 using TourPlanner.Domain;
 
 namespace TourPlanner.Tests.Search;
@@ -18,13 +19,18 @@ namespace TourPlanner.Tests.Search;
 public sealed class ToursControllerSearchTests
 {
     private Mock<ITourService> _service = null!;
+    private Mock<ITourImportExportService> _importExport = null!;
     private ToursController _controller = null!;
 
     [SetUp]
     public void SetUp()
     {
         _service = new Mock<ITourService>(MockBehavior.Strict);
-        _controller = new ToursController(_service.Object, NullLogger<ToursController>.Instance);
+        _importExport = new Mock<ITourImportExportService>(MockBehavior.Strict);
+        _controller = new ToursController(
+            _service.Object,
+            _importExport.Object,
+            NullLogger<ToursController>.Instance);
     }
 
     private static Tour SampleTour(string name = "Wachau valley") => new()
