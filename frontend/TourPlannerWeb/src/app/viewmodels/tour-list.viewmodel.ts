@@ -20,11 +20,15 @@ export class TourListViewModel {
    */
   readonly filteredTours = computed(() => this.tourService.filteredByTransport());
 
-  constructor() {
+constructor() {
   effect(() => {
     if (this.search.scope() !== 'tours') return;
 
-    this.tourService.search(this.search.query());
+    const q = this.search.query().trim();
+
+    if (q.length === 0) return;
+
+    this.tourService.search(q);
   });
 }
 
