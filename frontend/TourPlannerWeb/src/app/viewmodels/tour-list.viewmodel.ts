@@ -1,12 +1,10 @@
 import { Injectable, inject, computed, signal } from '@angular/core';
 import { TourService } from '../services/tour.service';
-import { SearchService } from '../services/search.service';
 import { Tour, TransportType, TourStatus } from '../models/tour.model';
 
 @Injectable()
 export class TourListViewModel {
   private readonly tourService = inject(TourService);
-  private readonly searchService = inject(SearchService);
 
   readonly transportFilter = this.tourService.transportFilter;
   readonly statusFilter = this.tourService.statusFilter;
@@ -14,17 +12,11 @@ export class TourListViewModel {
   /** Tour that the user has flagged for deletion — drives the confirm dialog. */
   readonly pendingDelete = signal<Tour | null>(null);
 
-  readonly filteredTours = computed(() => {
-    const query = this.searchService.query().toLowerCase();
-    const tours = this.tourService.filteredByTransport();
-    if (!query) return tours;
-    return tours.filter(
-      (t) =>
-        t.name.toLowerCase().includes(query) ||
-        t.from.toLowerCase().includes(query) ||
-        t.to.toLowerCase().includes(query)
-    );
-  });
+  /**
+   * Tours after transport + status filtering. Full-text search is handled by
+   * the backend now; this view-model no longer performs any query filtering.
+   */
+  readonly filteredTours = computed(() => this.tourService.filteredByTransport());
 
   requestDelete(tour: Tour): void {
     this.pendingDelete.set(tour);

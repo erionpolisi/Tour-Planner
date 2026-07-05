@@ -27,7 +27,7 @@ export class LogsPageComponent implements OnInit, OnDestroy {
   protected readonly vm = inject(LogsViewModel);
   private readonly logDetailVm = inject(LogDetailViewModel);
   private readonly addLogVm = inject(AddLogViewModel);
-  protected readonly searchService = inject(SearchService);
+  private readonly searchService = inject(SearchService);
   protected readonly icons = { Plus, Trash2, Star, TrendingUp, Clock, Calendar, MessageSquare, Edit2 };
 
   ngOnInit(): void {
