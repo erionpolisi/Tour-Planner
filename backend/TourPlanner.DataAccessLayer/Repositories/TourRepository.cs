@@ -86,22 +86,29 @@ public class TourRepository : ITourRepository
             query.Length, effectiveLimit);
 
         // Web-search style: supports "quoted phrases", -negation, and word OR word.
-        // Runs server-side; user input is a bound parameter, so it's safe from injection.
-        var tsQuery = EF.Functions.WebSearchToTsQuery("simple", query);
+        // NOTE: `EF.Functions.WebSearchToTsQuery` and `EF.Property<...>` MUST appear
+        // inline inside the expression tree. Capturing them in a local would force
+        // client-side evaluation and blow up at runtime with
+        // "the query has switched to client-evaluation".
+        // The `query` string is bound as a parameter, so this is injection-safe.
 
         var results = await _db.Tours
             .AsNoTracking()
             .Where(t =>
-                EF.Property<NpgsqlTsVector>(t, TourPlannerDbContext.SearchVectorColumn).Matches(tsQuery)
+                EF.Property<NpgsqlTsVector>(t, TourPlannerDbContext.SearchVectorColumn)
+                    .Matches(EF.Functions.WebSearchToTsQuery("simple", query))
                 || t.Logs.Any(l =>
-                    EF.Property<NpgsqlTsVector>(l, TourPlannerDbContext.SearchVectorColumn).Matches(tsQuery)))
+                    EF.Property<NpgsqlTsVector>(l, TourPlannerDbContext.SearchVectorColumn)
+                        .Matches(EF.Functions.WebSearchToTsQuery("simple", query))))
             .Select(t => new
             {
                 Tour = t,
-                MatchedInTour = EF.Property<NpgsqlTsVector>(t, TourPlannerDbContext.SearchVectorColumn).Matches(tsQuery),
+                MatchedInTour = EF.Property<NpgsqlTsVector>(t, TourPlannerDbContext.SearchVectorColumn)
+                    .Matches(EF.Functions.WebSearchToTsQuery("simple", query)),
                 MatchedLogs = t.Logs
                     .Where(l =>
-                        EF.Property<NpgsqlTsVector>(l, TourPlannerDbContext.SearchVectorColumn).Matches(tsQuery))
+                        EF.Property<NpgsqlTsVector>(l, TourPlannerDbContext.SearchVectorColumn)
+                            .Matches(EF.Functions.WebSearchToTsQuery("simple", query)))
                     .OrderByDescending(l => l.LoggedAt)
                     .ToList(),
             })

@@ -44,7 +44,7 @@ public class ToursController : ControllerBase
     [HttpGet("search")]
     [ProducesResponseType(typeof(List<TourSearchResultDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<TourSearchResultDto>>> Search(
-        [FromQuery] string q,
+        [FromQuery] string? q,
         [FromQuery] int limit,
         CancellationToken ct)
     {
