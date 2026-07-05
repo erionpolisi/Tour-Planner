@@ -22,7 +22,11 @@ constructor() {
   effect(() => {
     if (this.search.scope() !== 'logs') return;
 
-    this.tourLogService.search(this.search.query());
+    const q = this.search.query().trim();
+
+    if (q.length === 0) return;
+
+    this.tourLogService.search(q);
   });
 }
 
