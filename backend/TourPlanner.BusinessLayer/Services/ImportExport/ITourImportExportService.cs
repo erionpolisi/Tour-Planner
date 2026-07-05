@@ -11,20 +11,16 @@ namespace TourPlanner.BusinessLayer.Services.ImportExport;
 public interface ITourImportExportService
 {
     /// <summary>
-    /// Load every tour together with its logs, ready to be serialized.
+    /// Load every tour owned by <paramref name="ownerId"/> together with its logs, ready to be serialized.
     /// </summary>
-    Task<IReadOnlyList<Tour>> ExportAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Tour>> ExportAllAsync(Guid ownerId, CancellationToken ct = default);
 
     /// <summary>
-    /// Import a set of tours. Best-effort: valid tours are saved even when
-    /// others in the same call fail. Each imported tour is assigned a fresh
-    /// <see cref="Tour.Id"/> so a re-import never collides.
+    /// Import a set of tours as owned by <paramref name="ownerId"/>. Best-effort:
+    /// valid tours are saved even when others in the same call fail. Each imported
+    /// tour is assigned a fresh <see cref="Tour.Id"/> so a re-import never collides.
     /// </summary>
-    /// <returns>
-    /// Summary of the operation. <see cref="ImportSummary.Errors"/> contains
-    /// the per-tour failures (index + display name + human message).
-    /// </returns>
-    Task<ImportSummary> ImportAsync(IReadOnlyList<Tour> tours, CancellationToken ct = default);
+    Task<ImportSummary> ImportAsync(Guid ownerId, IReadOnlyList<Tour> tours, CancellationToken ct = default);
 }
 
 /// <summary>Aggregate result of an <see cref="ITourImportExportService.ImportAsync"/> call.</summary>

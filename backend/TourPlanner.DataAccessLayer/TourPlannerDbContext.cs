@@ -45,6 +45,12 @@ public class TourPlannerDbContext : DbContext
         // The 'simple' text-search config keeps the indexing language-agnostic:
         // it lowercases and tokenizes but skips stemming / stopword removal,
         // which suits tour names, cities, and enum-as-text values best.
+        //
+        // The tour vector additionally includes the persisted "Popularity" and
+        // "ChildFriendliness" columns as text so users can search for e.g.
+        // "great for children" via the mapped label — see TourStatsCalculator
+        // for the label buckets. Popularity is duplicated as its raw integer
+        // and its bucket label to support both "5" and "very popular".
 
         modelBuilder.Entity<Tour>()
             .Property<NpgsqlTsVector>(SearchVectorColumn)
@@ -56,13 +62,36 @@ public class TourPlannerDbContext : DbContext
                     coalesce("From", '') || ' ' ||
                     coalesce("To", '') || ' ' ||
                     coalesce("TransportType", '') || ' ' ||
-                    coalesce("Status", ''))
+                    coalesce("Status", '') || ' ' ||
+                    "Popularity"::text || ' ' ||
+                    "ChildFriendliness"::text || ' ' ||
+                    (CASE
+                        WHEN "Popularity" <= 0 THEN 'not tried'
+                        WHEN "Popularity" <= 2 THEN 'some interest'
+                        WHEN "Popularity" <= 5 THEN 'popular'
+                        ELSE 'very popular'
+                     END) || ' ' ||
+                    (CASE
+                        WHEN "ChildFriendliness" >= 67 THEN 'great for children'
+                        WHEN "ChildFriendliness" >= 34 THEN 'ok for children'
+                        ELSE 'not suitable for children'
+                     END))
                 """,
                 stored: true);
 
         modelBuilder.Entity<Tour>()
             .HasIndex(SearchVectorColumn)
             .HasMethod("GIN");
+
+        // Every tour belongs to exactly one user; deleting the user cascades to their tours.
+        modelBuilder.Entity<Tour>()
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(t => t.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Tour>()
+            .HasIndex(t => t.UserId);
 
         modelBuilder.Entity<TourLog>()
             .Property<NpgsqlTsVector>(SearchVectorColumn)

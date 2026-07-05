@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Logging;
+using TourPlanner.BusinessLayer.Services.Stats;
 using TourPlanner.DataAccessLayer.Repositories;
 using TourPlanner.Domain;
 
@@ -28,16 +29,16 @@ public sealed class TourImportExportService : ITourImportExportService
         _logger = logger;
     }
 
-    public async Task<IReadOnlyList<Tour>> ExportAllAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<Tour>> ExportAllAsync(Guid ownerId, CancellationToken ct = default)
     {
-        var tours = await _tours.GetAllWithLogsAsync(ct);
+        var tours = await _tours.GetAllWithLogsAsync(ownerId, ct);
         _logger.LogInformation(
-            "Export bundle prepared: {TourCount} tour(s), {LogCount} log(s)",
-            tours.Count, tours.Sum(t => t.Logs.Count));
+            "Export bundle prepared for user {UserId}: {TourCount} tour(s), {LogCount} log(s)",
+            ownerId, tours.Count, tours.Sum(t => t.Logs.Count));
         return tours;
     }
 
-    public async Task<ImportSummary> ImportAsync(IReadOnlyList<Tour> tours, CancellationToken ct = default)
+    public async Task<ImportSummary> ImportAsync(Guid ownerId, IReadOnlyList<Tour> tours, CancellationToken ct = default)
     {
         if (tours is null || tours.Count == 0)
         {
@@ -57,12 +58,18 @@ public sealed class TourImportExportService : ITourImportExportService
             {
                 ValidateForImport(incoming);
                 AssignFreshIdentity(incoming);
+                // Force ownership so a caller cannot inject tours "belonging to" someone else.
+                incoming.UserId = ownerId;
+                // Precompute stats so the freshly-imported row has correct popularity / child-friendliness.
+                incoming.Popularity = TourStatsCalculator.Popularity(incoming.Logs);
+                incoming.ChildFriendliness = TourStatsCalculator.ChildFriendlinessScore(
+                    incoming.Distance, incoming.Logs);
 
                 await _tours.AddAsync(incoming);
                 imported++;
                 _logger.LogInformation(
-                    "Imported tour #{Index} \"{Name}\" ({LogCount} log(s))",
-                    i, incoming.Name, incoming.Logs.Count);
+                    "Imported tour #{Index} \"{Name}\" ({LogCount} log(s)) for user {UserId}",
+                    i, incoming.Name, incoming.Logs.Count, ownerId);
             }
             catch (Exception ex) when (ex is ValidationException or ArgumentException)
             {

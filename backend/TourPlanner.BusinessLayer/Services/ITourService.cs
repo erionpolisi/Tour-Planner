@@ -7,30 +7,32 @@ namespace TourPlanner.BusinessLayer.Services;
 /// Works exclusively with domain entities — DTOs live in the API layer and are
 /// converted there. Business errors are signalled through the exceptions in
 /// <see cref="TourPlanner.BusinessLayer.Exceptions"/>.
+///
+/// Every method takes an <c>ownerId</c> so per-user data isolation is enforced
+/// consistently — the caller (controllers) reads it from the JWT <c>sub</c> claim.
 /// </summary>
 public interface ITourService
 {
-    Task<List<Tour>> GetAllAsync();
-    Task<Tour> GetByIdAsync(Guid id);
+    Task<List<Tour>> GetAllAsync(Guid ownerId);
+    Task<Tour> GetByIdAsync(Guid ownerId, Guid id);
 
-    /// <summary>Persist a new tour. The passed entity must already be fully valid.</summary>
-    Task<Tour> CreateAsync(Tour tour);
+    /// <summary>
+    /// Persist a new tour. The service sets <see cref="Tour.UserId"/> from
+    /// <paramref name="ownerId"/> — request bodies cannot forge ownership.
+    /// </summary>
+    Task<Tour> CreateAsync(Guid ownerId, Tour tour);
 
     /// <summary>
     /// Load the tour, apply <paramref name="applyChanges"/>, persist.
-    /// The caller (usually a controller-side mapper) mutates the tracked entity
-    /// so we don't need a full DTO here — only the diff logic.
+    /// Only tours owned by <paramref name="ownerId"/> can be modified.
     /// </summary>
-    Task<Tour> UpdateAsync(Guid id, Action<Tour> applyChanges);
+    Task<Tour> UpdateAsync(Guid ownerId, Guid id, Action<Tour> applyChanges);
 
-    Task DeleteAsync(Guid id);
+    Task DeleteAsync(Guid ownerId, Guid id);
 
     /// <summary>
-    /// Full-text search across tours and their logs. Empty or whitespace-only
-    /// queries return an empty list without hitting the database.
+    /// Full-text search across the given user's tours and their logs. Empty or
+    /// whitespace-only queries return an empty list without hitting the database.
     /// </summary>
-    /// <param name="query">Free-text query. Supports web-search syntax (quotes, OR, -negation).</param>
-    /// <param name="limit">Maximum tours to return. Values &lt;= 0 use a sensible default; extreme values are capped by the repository.</param>
-    /// <param name="ct">Cancellation token propagated from the HTTP request.</param>
-    Task<List<TourSearchResult>> SearchAsync(string query, int limit, CancellationToken ct = default);
+    Task<List<TourSearchResult>> SearchAsync(Guid ownerId, string query, int limit, CancellationToken ct = default);
 }

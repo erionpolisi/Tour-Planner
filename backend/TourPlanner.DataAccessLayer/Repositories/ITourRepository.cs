@@ -4,27 +4,36 @@ namespace TourPlanner.DataAccessLayer.Repositories;
 
 /// <summary>
 /// Contract for accessing tours in the database.
-/// The business layer depends on this interface, not on the concrete
-/// implementation — that's what makes the code testable and the DAL swappable.
+/// Every method takes an owner <see cref="Guid"/> so per-user data isolation
+/// is enforced at the persistence boundary — a caller cannot accidentally
+/// return another user's tours by forgetting a WHERE clause.
 /// </summary>
 public interface ITourRepository
 {
-    Task<List<Tour>> GetAllAsync();
-    Task<Tour?> GetByIdAsync(Guid id);
-    Task AddAsync(Tour tour);
-    Task UpdateAsync(Tour tour);
-    Task<bool> DeleteAsync(Guid id);
+    /// <summary>All tours owned by <paramref name="ownerId"/>.</summary>
+    Task<List<Tour>> GetAllAsync(Guid ownerId);
 
-    /// <summary>Like <see cref="GetAllAsync"/> but eager-loads each tour's logs. Used by the export flow.</summary>
-    Task<List<Tour>> GetAllWithLogsAsync(CancellationToken ct = default);
+    /// <summary>The tour with the given id — only if it belongs to <paramref name="ownerId"/>.</summary>
+    Task<Tour?> GetByIdAsync(Guid ownerId, Guid id);
 
     /// <summary>
-    /// PostgreSQL full-text search over tours and their logs. Returns each
-    /// matching tour together with the specific logs that also matched
-    /// (may be empty when only the tour's own text matched).
+    /// Persist a new tour. The caller is expected to have set
+    /// <see cref="Tour.UserId"/> to the owner already.
     /// </summary>
-    /// <param name="query">User-supplied search string. Never null/empty when called from the service.</param>
-    /// <param name="limit">Maximum number of tours to return. Values &lt;= 0 fall back to 50.</param>
-    /// <param name="ct">Cancellation token propagated from the HTTP request.</param>
-    Task<List<TourSearchHit>> SearchAsync(string query, int limit, CancellationToken ct = default);
+    Task AddAsync(Tour tour);
+
+    Task UpdateAsync(Tour tour);
+
+    /// <summary>Delete the given tour — only if it belongs to <paramref name="ownerId"/>.</summary>
+    Task<bool> DeleteAsync(Guid ownerId, Guid id);
+
+    /// <summary>Like <see cref="GetAllAsync"/> but eager-loads each tour's logs. Used by the export flow.</summary>
+    Task<List<Tour>> GetAllWithLogsAsync(Guid ownerId, CancellationToken ct = default);
+
+    /// <summary>
+    /// PostgreSQL full-text search over the given user's tours + their logs.
+    /// Returns each matching tour together with the specific logs that also
+    /// matched (may be empty when only the tour's own text matched).
+    /// </summary>
+    Task<List<TourSearchHit>> SearchAsync(Guid ownerId, string query, int limit, CancellationToken ct = default);
 }

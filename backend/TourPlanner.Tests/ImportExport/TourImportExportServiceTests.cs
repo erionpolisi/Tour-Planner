@@ -10,14 +10,17 @@ namespace TourPlanner.Tests.ImportExport;
 /// <summary>
 /// Unit tests for <see cref="TourImportExportService"/>.
 /// Repository is mocked; these tests cover:
-///   * export composes tours + logs from the repository unchanged
+///   * export composes tours + logs from the repository unchanged (scoped by owner)
 ///   * import assigns fresh IDs and re-links logs
+///   * import forces the caller's user id onto every imported tour
 ///   * import is best-effort (invalid entries don't abort the batch)
 ///   * validation catches enum/range violations at the business-layer boundary
 /// </summary>
 [TestFixture]
 public class TourImportExportServiceTests
 {
+    private static readonly Guid Owner = Guid.Parse("33333333-3333-3333-3333-333333333333");
+
     private Mock<ITourRepository> _repo = null!;
     private TourImportExportService _service = null!;
 
@@ -33,6 +36,7 @@ public class TourImportExportServiceTests
     private static Tour ValidTour(string name = "Vienna loop") => new()
     {
         Id = Guid.NewGuid(),
+        UserId = Owner,
         Name = name,
         Description = "desc",
         From = "Vienna",
@@ -64,10 +68,10 @@ public class TourImportExportServiceTests
     {
         var tour = ValidTour();
         tour.Logs.Add(ValidLog(tour.Id));
-        _repo.Setup(r => r.GetAllWithLogsAsync(It.IsAny<CancellationToken>()))
+        _repo.Setup(r => r.GetAllWithLogsAsync(Owner, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Tour> { tour });
 
-        var result = await _service.ExportAllAsync();
+        var result = await _service.ExportAllAsync(Owner);
 
         Assert.That(result, Has.Count.EqualTo(1));
         Assert.That(result[0].Name, Is.EqualTo("Vienna loop"));
@@ -75,14 +79,14 @@ public class TourImportExportServiceTests
     }
 
     [Test]
-    public async Task ExportAllAsync_ForwardsCancellationToken()
+    public async Task ExportAllAsync_ForwardsOwnerAndCancellationToken()
     {
         using var cts = new CancellationTokenSource();
-        _repo.Setup(r => r.GetAllWithLogsAsync(cts.Token))
+        _repo.Setup(r => r.GetAllWithLogsAsync(Owner, cts.Token))
             .ReturnsAsync(new List<Tour>())
             .Verifiable();
 
-        await _service.ExportAllAsync(cts.Token);
+        await _service.ExportAllAsync(Owner, cts.Token);
 
         _repo.Verify();
     }
@@ -94,7 +98,7 @@ public class TourImportExportServiceTests
     [Test]
     public async Task ImportAsync_EmptyList_ReturnsZeros_AndDoesNotHitRepo()
     {
-        var summary = await _service.ImportAsync(Array.Empty<Tour>());
+        var summary = await _service.ImportAsync(Owner, Array.Empty<Tour>());
 
         Assert.That(summary.Total, Is.EqualTo(0));
         Assert.That(summary.Imported, Is.EqualTo(0));
@@ -109,12 +113,30 @@ public class TourImportExportServiceTests
         var t2 = ValidTour("B");
         _repo.Setup(r => r.AddAsync(It.IsAny<Tour>())).Returns(Task.CompletedTask);
 
-        var summary = await _service.ImportAsync(new[] { t1, t2 });
+        var summary = await _service.ImportAsync(Owner, new[] { t1, t2 });
 
         Assert.That(summary.Imported, Is.EqualTo(2));
         Assert.That(summary.Total, Is.EqualTo(2));
         Assert.That(summary.Errors, Is.Empty);
         _repo.Verify(r => r.AddAsync(It.IsAny<Tour>()), Times.Exactly(2));
+    }
+
+    [Test]
+    public async Task ImportAsync_ForcesOwnerId_EvenIfBundleHasSomeoneElse()
+    {
+        var other = Guid.NewGuid();
+        var incoming = ValidTour();
+        incoming.UserId = other; // caller tries to smuggle in a different owner
+
+        Tour? captured = null;
+        _repo.Setup(r => r.AddAsync(It.IsAny<Tour>()))
+            .Callback<Tour>(t => captured = t)
+            .Returns(Task.CompletedTask);
+
+        await _service.ImportAsync(Owner, new[] { incoming });
+
+        Assert.That(captured, Is.Not.Null);
+        Assert.That(captured!.UserId, Is.EqualTo(Owner)); // service overrides
     }
 
     [Test]
@@ -131,7 +153,7 @@ public class TourImportExportServiceTests
             .Callback<Tour>(t => captured = t)
             .Returns(Task.CompletedTask);
 
-        await _service.ImportAsync(new[] { original });
+        await _service.ImportAsync(Owner, new[] { original });
 
         Assert.That(captured, Is.Not.Null);
         Assert.That(captured!.Id, Is.Not.EqualTo(originalId));
@@ -139,6 +161,27 @@ public class TourImportExportServiceTests
         Assert.That(captured.Logs[0].Id, Is.Not.EqualTo(originalLogId));
         Assert.That(captured.Logs[0].TourId, Is.EqualTo(captured.Id));
         Assert.That(captured.Logs[0].Tour, Is.Null); // repo will re-hydrate via cascade
+    }
+
+    [Test]
+    public async Task ImportAsync_PrecomputesStats_ForImportedTour()
+    {
+        var t = ValidTour();
+        // 3 medium-difficulty logs → popularity 3, "popular" bucket.
+        t.Logs.Add(ValidLog(t.Id));
+        t.Logs.Add(ValidLog(t.Id));
+        t.Logs.Add(ValidLog(t.Id));
+
+        Tour? captured = null;
+        _repo.Setup(r => r.AddAsync(It.IsAny<Tour>()))
+            .Callback<Tour>(x => captured = x)
+            .Returns(Task.CompletedTask);
+
+        await _service.ImportAsync(Owner, new[] { t });
+
+        Assert.That(captured, Is.Not.Null);
+        Assert.That(captured!.Popularity, Is.EqualTo(3));
+        Assert.That(captured.ChildFriendliness, Is.InRange(0, 100));
     }
 
     // ----------------------------------------------------------------
@@ -155,7 +198,7 @@ public class TourImportExportServiceTests
         _repo.Setup(r => r.AddAsync(It.Is<Tour>(t => t.Name == "Good")))
             .Returns(Task.CompletedTask);
 
-        var summary = await _service.ImportAsync(new[] { good, bad });
+        var summary = await _service.ImportAsync(Owner, new[] { good, bad });
 
         Assert.That(summary.Imported, Is.EqualTo(1));
         Assert.That(summary.Total, Is.EqualTo(2));
@@ -173,7 +216,7 @@ public class TourImportExportServiceTests
         var t = ValidTour();
         t.Name = emptyName;
 
-        var summary = await _service.ImportAsync(new[] { t });
+        var summary = await _service.ImportAsync(Owner, new[] { t });
 
         Assert.That(summary.Imported, Is.EqualTo(0));
         Assert.That(summary.Errors, Has.Count.EqualTo(1));
@@ -188,7 +231,7 @@ public class TourImportExportServiceTests
         log.Rating = 7; // out of 1..5
         t.Logs.Add(log);
 
-        var summary = await _service.ImportAsync(new[] { t });
+        var summary = await _service.ImportAsync(Owner, new[] { t });
 
         Assert.That(summary.Imported, Is.EqualTo(0));
         Assert.That(summary.Errors[0].Message, Does.Contain("rating"));
@@ -200,20 +243,20 @@ public class TourImportExportServiceTests
         var t = ValidTour();
         t.Distance = -1;
 
-        var summary = await _service.ImportAsync(new[] { t });
+        var summary = await _service.ImportAsync(Owner, new[] { t });
 
         Assert.That(summary.Imported, Is.EqualTo(0));
         Assert.That(summary.Errors[0].Message, Does.Contain("distance"));
     }
 
     [Test]
-    public async Task ImportAsync_ForwardsCancellationToken()
+    public void ImportAsync_ForwardsCancellationToken()
     {
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
         Assert.That(
-            async () => await _service.ImportAsync(new[] { ValidTour() }, cts.Token),
+            async () => await _service.ImportAsync(Owner, new[] { ValidTour() }, cts.Token),
             Throws.InstanceOf<OperationCanceledException>());
     }
 }

@@ -15,32 +15,33 @@ public class TourLogRepository : ITourLogRepository
         _logger = logger;
     }
 
-    public async Task<List<TourLog>> GetAllAsync()
+    public async Task<List<TourLog>> GetAllAsync(Guid ownerId)
     {
-        _logger.LogInformation("Loading all tour logs");
+        _logger.LogInformation("Loading all tour logs for user {UserId}", ownerId);
         return await _db.TourLogs
             .AsNoTracking()
             .Include(l => l.Tour)
+            .Where(l => l.Tour!.UserId == ownerId)
             .ToListAsync();
     }
 
-    public async Task<List<TourLog>> GetByTourIdAsync(Guid tourId)
+    public async Task<List<TourLog>> GetByTourIdAsync(Guid ownerId, Guid tourId)
     {
-        _logger.LogInformation("Loading logs for tour {TourId}", tourId);
+        _logger.LogInformation("Loading logs for tour {TourId} (user {UserId})", tourId, ownerId);
         return await _db.TourLogs
             .AsNoTracking()
             .Include(l => l.Tour)
-            .Where(l => l.TourId == tourId)
+            .Where(l => l.TourId == tourId && l.Tour!.UserId == ownerId)
             .OrderByDescending(l => l.LoggedAt)
             .ToListAsync();
     }
 
-    public async Task<TourLog?> GetByIdAsync(Guid id)
+    public async Task<TourLog?> GetByIdAsync(Guid ownerId, Guid id)
     {
-        _logger.LogInformation("Loading tour log {LogId}", id);
+        _logger.LogInformation("Loading tour log {LogId} for user {UserId}", id, ownerId);
         return await _db.TourLogs
             .Include(l => l.Tour)
-            .FirstOrDefaultAsync(l => l.Id == id);
+            .FirstOrDefaultAsync(l => l.Id == id && l.Tour!.UserId == ownerId);
     }
 
     public async Task AddAsync(TourLog log)
@@ -57,12 +58,16 @@ public class TourLogRepository : ITourLogRepository
         await _db.SaveChangesAsync();
     }
 
-    public async Task<bool> DeleteAsync(Guid id)
+    public async Task<bool> DeleteAsync(Guid ownerId, Guid id)
     {
-        var log = await _db.TourLogs.FindAsync(id);
+        var log = await _db.TourLogs
+            .Include(l => l.Tour)
+            .FirstOrDefaultAsync(l => l.Id == id && l.Tour!.UserId == ownerId);
         if (log is null)
         {
-            _logger.LogWarning("Tried to delete tour log {LogId}, but it was not found", id);
+            _logger.LogWarning(
+                "Tried to delete tour log {LogId} for user {UserId}, but it was not found or not owned",
+                id, ownerId);
             return false;
         }
 
@@ -70,5 +75,15 @@ public class TourLogRepository : ITourLogRepository
         _db.TourLogs.Remove(log);
         await _db.SaveChangesAsync();
         return true;
+    }
+
+    public async Task<List<TourLog>> GetForTourAsync(Guid tourId)
+    {
+        // No owner filter — service-layer callers use this for stats recomputation
+        // AFTER they've already verified tour ownership.
+        return await _db.TourLogs
+            .AsNoTracking()
+            .Where(l => l.TourId == tourId)
+            .ToListAsync();
     }
 }

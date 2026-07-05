@@ -20,6 +20,16 @@ export interface Tour {
    * user-uploaded image as a `data:` URL. Always set.
    */
   imageUrl: string;
+
+  // Server-computed attributes — read-only from the client's perspective.
+  /** Raw log count (0..N). */
+  popularity: number;
+  /** e.g. "not tried" | "some interest" | "popular" | "very popular". */
+  popularityLabel: string;
+  /** 0..100, higher = friendlier for children. */
+  childFriendliness: number;
+  /** e.g. "not suitable for children" | "ok for children" | "great for children". */
+  childFriendlinessLabel: string;
 }
 
 /** Preset image gallery — used as defaults and shown as choices in the modal. */

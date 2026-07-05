@@ -1,4 +1,5 @@
 using TourPlanner.API.Dtos.Tours;
+using TourPlanner.BusinessLayer.Services.Stats;
 using TourPlanner.Domain;
 
 namespace TourPlanner.API.Mappers;
@@ -26,6 +27,13 @@ public static class TourMapper
         Status = entity.Status.ToString().ToLowerInvariant(),
         Color = entity.Color,
         ImageUrl = entity.ImageUrl,
+        // Computed attributes: the numeric columns come straight from the DB,
+        // the labels are derived on the way out so clients don't have to
+        // duplicate the bucket boundaries.
+        Popularity = entity.Popularity,
+        PopularityLabel = TourStatsCalculator.PopularityLabel(entity.Popularity),
+        ChildFriendliness = entity.ChildFriendliness,
+        ChildFriendlinessLabel = TourStatsCalculator.ChildFriendlinessLabel(entity.ChildFriendliness),
     };
 
     public static Tour FromCreateDto(CreateTourDto dto) => new()
