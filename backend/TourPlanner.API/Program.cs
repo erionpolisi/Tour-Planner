@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Serilog;
 using TourPlanner.API.Middleware;
 using TourPlanner.BusinessLayer.Services;
+using TourPlanner.BusinessLayer.Services.Routing;
 using TourPlanner.DataAccessLayer;
 using TourPlanner.DataAccessLayer.Interceptors;
 using TourPlanner.DataAccessLayer.Repositories;
@@ -62,6 +63,18 @@ builder.Services.AddScoped<ITourLogService, TourLogService>();
 builder.Services.AddScoped<IUserService, UserService>();
 
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
+
+// --- Routing / geocoding proxy (Nominatim + OpenRouteService) ---------------
+// Bind config from the "Routing" section — the ORS API key MUST come from
+// user-secrets, never from committed appsettings.
+builder.Services.Configure<RoutingOptions>(
+    builder.Configuration.GetSection(RoutingOptions.SectionName));
+
+// Named typed client — gets a scoped HttpClient with sane defaults.
+builder.Services.AddHttpClient<IRoutingService, RoutingService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(20);
+});
 
 // --- CORS: let the Angular dev server (localhost:4200) call this API ---------
 const string AngularDevCors = "AngularDev";

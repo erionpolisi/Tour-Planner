@@ -1,6 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { NominatimService } from '../services/nominatim.service';
-import { OsrmRoutingService } from '../services/osrm-routing.service';
+import { RoutingApiService } from '../services/routing-api.service';
 import type { Coords, SearchResult, RouteResult } from '../models/geo.model';
 import { TransportType } from '../models/tour.model';
 import {
@@ -20,8 +19,10 @@ export type ActiveMarker = 'from' | 'to';
  */
 @Injectable()
 export class MapPickerViewModel {
-  private readonly nominatim = inject(NominatimService);
-  private readonly routing = inject(OsrmRoutingService);
+  private readonly routingApi = inject(RoutingApiService);
+  // Both geocoding and routing go through the same backend service.
+  private readonly nominatim = this.routingApi;
+  private readonly routing = this.routingApi;
 
   // Synced from component @Input() signals.
   readonly transportType = signal<TransportType>('driving');
