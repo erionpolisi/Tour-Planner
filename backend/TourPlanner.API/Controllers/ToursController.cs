@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using TourPlanner.API.Dtos.ImportExport;
 using TourPlanner.API.Dtos.Tours;
@@ -13,6 +15,10 @@ namespace TourPlanner.API.Controllers;
 /// business errors (NotFound, Validation, Conflict) surface as exceptions
 /// from the service and are translated to HTTP status codes by
 /// <c>ExceptionHandlingMiddleware</c>.
+///
+/// Every action reads the owning user id from the JWT <c>sub</c> claim and
+/// passes it down — services and repositories enforce that only the caller's
+/// own tours are visible or mutable.
 /// </summary>
 [ApiController]
 [Route("api/tours")]
@@ -33,20 +39,33 @@ public class ToursController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>GET /api/tours — list all tours.</summary>
+    /// <summary>Reads the current user id from the JWT <c>sub</c> claim.</summary>
+    /// <exception cref="UnauthorizedAccessException">
+    /// Only thrown when auth is misconfigured — the FallbackPolicy in <c>Program.cs</c>
+    /// already blocks unauthenticated requests before we reach the action.
+    /// </exception>
+    private Guid CurrentUserId()
+    {
+        var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        if (Guid.TryParse(sub, out var userId)) return userId;
+        throw new UnauthorizedAccessException("Missing or malformed 'sub' claim.");
+    }
+
+    /// <summary>GET /api/tours — list every tour owned by the current user.</summary>
     [HttpGet]
     [ProducesResponseType(typeof(List<TourDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<TourDto>>> GetAll()
     {
-        var tours = await _service.GetAllAsync();
+        var tours = await _service.GetAllAsync(CurrentUserId());
         return Ok(tours.Select(TourMapper.ToDto).ToList());
     }
 
     /// <summary>
     /// GET /api/tours/search?q=…&amp;limit=… — PostgreSQL full-text search
-    /// across tour names, descriptions, locations, transport/status, log
-    /// comments, difficulty and rating. Empty queries return an empty list
-    /// with 200 OK (not 400) so clients can render "no results" naturally.
+    /// across the current user's tour names, descriptions, locations,
+    /// transport/status, log comments, difficulty, rating, popularity,
+    /// and child-friendliness. Empty queries return an empty list with 200
+    /// (not 400) so clients can render "no results" naturally.
     /// </summary>
     [HttpGet("search")]
     [ProducesResponseType(typeof(List<TourSearchResultDto>), StatusCodes.Status200OK)]
@@ -55,20 +74,21 @@ public class ToursController : ControllerBase
         [FromQuery] int limit,
         CancellationToken ct)
     {
-        var results = await _service.SearchAsync(q ?? string.Empty, limit, ct);
+        var results = await _service.SearchAsync(CurrentUserId(), q ?? string.Empty, limit, ct);
         return Ok(results.Select(TourSearchResultMapper.ToDto).ToList());
     }
 
     /// <summary>
-    /// GET /api/tours/export — download every tour (with its logs) as a JSON
-    /// bundle. Response has a <c>Content-Disposition: attachment</c> so
-    /// browsers save it instead of previewing.
+    /// GET /api/tours/export — download every tour (with its logs) owned by
+    /// the current user as a JSON bundle. Response has a
+    /// <c>Content-Disposition: attachment</c> so browsers save it instead of
+    /// previewing.
     /// </summary>
     [HttpGet("export")]
     [ProducesResponseType(typeof(TourExportBundleDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<TourExportBundleDto>> Export(CancellationToken ct)
     {
-        var tours = await _importExport.ExportAllAsync(ct);
+        var tours = await _importExport.ExportAllAsync(CurrentUserId(), ct);
         var bundle = TourImportExportMapper.ToBundle(tours);
 
         // Suggested filename with the export timestamp (ISO, no colons for Windows).
@@ -83,8 +103,8 @@ public class ToursController : ControllerBase
     }
 
     /// <summary>
-    /// POST /api/tours/import — import a JSON bundle. Best-effort: valid
-    /// tours are saved even when others fail. Returns a per-tour breakdown.
+    /// POST /api/tours/import — import a JSON bundle into the current user's
+    /// tour list. Best-effort: valid tours are saved even when others fail.
     /// </summary>
     [HttpPost("import")]
     [ProducesResponseType(typeof(ImportResultDto), StatusCodes.Status200OK)]
@@ -103,7 +123,7 @@ public class ToursController : ControllerBase
         }
 
         var tours = TourImportExportMapper.ToDomain(bundle);
-        var summary = await _importExport.ImportAsync(tours, ct);
+        var summary = await _importExport.ImportAsync(CurrentUserId(), tours, ct);
 
         _logger.LogInformation(
             "Import completed: {Imported}/{Total} imported, {Failed} failed",
@@ -112,17 +132,17 @@ public class ToursController : ControllerBase
         return Ok(TourImportExportMapper.ToDto(summary));
     }
 
-    /// <summary>GET /api/tours/{id} — single tour by id.</summary>
+    /// <summary>GET /api/tours/{id} — single tour by id (must be owned by current user).</summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(TourDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<TourDto>> GetById(Guid id)
     {
-        var tour = await _service.GetByIdAsync(id);
+        var tour = await _service.GetByIdAsync(CurrentUserId(), id);
         return Ok(TourMapper.ToDto(tour));
     }
 
-    /// <summary>POST /api/tours — create a new tour. Returns 201 + Location header.</summary>
+    /// <summary>POST /api/tours — create a new tour for the current user.</summary>
     [HttpPost]
     [ProducesResponseType(typeof(TourDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -130,7 +150,7 @@ public class ToursController : ControllerBase
     {
         // Mapper throws ArgumentException on invalid enum strings; middleware turns that into 400.
         var entity = TourMapper.FromCreateDto(dto);
-        var created = await _service.CreateAsync(entity);
+        var created = await _service.CreateAsync(CurrentUserId(), entity);
         _logger.LogInformation("Tour created: {TourId} ({Name})", created.Id, created.Name);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, TourMapper.ToDto(created));
     }
@@ -142,7 +162,7 @@ public class ToursController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<TourDto>> Update(Guid id, [FromBody] UpdateTourDto dto)
     {
-        var updated = await _service.UpdateAsync(id, entity => TourMapper.ApplyUpdate(entity, dto));
+        var updated = await _service.UpdateAsync(CurrentUserId(), id, entity => TourMapper.ApplyUpdate(entity, dto));
         return Ok(TourMapper.ToDto(updated));
     }
 
@@ -152,7 +172,7 @@ public class ToursController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)
     {
-        await _service.DeleteAsync(id);
+        await _service.DeleteAsync(CurrentUserId(), id);
         _logger.LogInformation("Tour deleted: {TourId}", id);
         return NoContent();
     }

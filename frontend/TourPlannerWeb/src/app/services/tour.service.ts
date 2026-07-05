@@ -20,17 +20,24 @@ interface TourDto {
   status: TourStatus;
   color?: string;
   imageUrl?: string;
+  // Computed attributes (server-side, read-only).
+  popularity?: number;
+  popularityLabel?: string;
+  childFriendliness?: number;
+  childFriendlinessLabel?: string;
 }
 
 /**
- * Payload sent on create — no id, no status (server defaults to "planned").
+ * Payload sent on create — no id, no status (server defaults to "planned"),
+ * and no computed attributes (server derives them from the logs).
  */
-type CreateTourBody = Omit<Tour, 'id' | 'status'>;
+type CreateTourBody = Omit<Tour, 'id' | 'status' | 'popularity' | 'popularityLabel' | 'childFriendliness' | 'childFriendlinessLabel'>;
 
 /**
  * Payload sent on update — all editable fields, id comes from URL.
+ * Computed attributes stay server-side.
  */
-type UpdateTourBody = Omit<Tour, 'id'>;
+type UpdateTourBody = Omit<Tour, 'id' | 'popularity' | 'popularityLabel' | 'childFriendliness' | 'childFriendlinessLabel'>;
 
 const API_BASE = 'http://localhost:5102/api/tours';
 
@@ -223,6 +230,10 @@ export class TourService {
       status: dto.status,
       color: dto.color ?? '',
       imageUrl: dto.imageUrl ?? getDefaultTourImage(dto.id),
+      popularity: dto.popularity ?? 0,
+      popularityLabel: dto.popularityLabel ?? 'not tried',
+      childFriendliness: dto.childFriendliness ?? 0,
+      childFriendlinessLabel: dto.childFriendlinessLabel ?? 'not suitable for children',
     };
   }
 }

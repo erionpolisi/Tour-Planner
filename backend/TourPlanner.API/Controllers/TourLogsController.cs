@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using TourPlanner.API.Dtos.TourLogs;
 using TourPlanner.API.Mappers;
@@ -10,6 +12,9 @@ namespace TourPlanner.API.Controllers;
 /// The controller owns the HTTP contract: DTO ↔ domain mapping happens here,
 /// business errors surface as exceptions from the service and are translated
 /// to HTTP status codes by <c>ExceptionHandlingMiddleware</c>.
+///
+/// Every action scopes to the caller's user id (JWT <c>sub</c> claim) so a
+/// user only ever sees the logs of tours they own.
 /// </summary>
 [ApiController]
 [Route("api/logs")]
@@ -25,17 +30,25 @@ public class TourLogsController : ControllerBase
         _logger = logger;
     }
 
+    private Guid CurrentUserId()
+    {
+        var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        if (Guid.TryParse(sub, out var userId)) return userId;
+        throw new UnauthorizedAccessException("Missing or malformed 'sub' claim.");
+    }
+
     /// <summary>
-    /// GET /api/logs — list all logs (optionally filtered by tour).
+    /// GET /api/logs — list all logs for the current user (optionally filtered by tour).
     /// Example: <c>GET /api/logs?tourId=&lt;guid&gt;</c>.
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(List<TourLogDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<TourLogDto>>> GetAll([FromQuery] Guid? tourId)
     {
+        var userId = CurrentUserId();
         var logs = tourId.HasValue
-            ? await _service.GetByTourIdAsync(tourId.Value)
-            : await _service.GetAllAsync();
+            ? await _service.GetByTourIdAsync(userId, tourId.Value)
+            : await _service.GetAllAsync(userId);
         return Ok(logs.Select(TourLogMapper.ToDto).ToList());
     }
 
@@ -45,7 +58,7 @@ public class TourLogsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<TourLogDto>> GetById(Guid id)
     {
-        var log = await _service.GetByIdAsync(id);
+        var log = await _service.GetByIdAsync(CurrentUserId(), id);
         return Ok(TourLogMapper.ToDto(log));
     }
 
@@ -57,7 +70,7 @@ public class TourLogsController : ControllerBase
     public async Task<ActionResult<TourLogDto>> Create([FromBody] CreateTourLogDto dto)
     {
         var entity = TourLogMapper.FromCreateDto(dto);
-        var created = await _service.CreateAsync(entity);
+        var created = await _service.CreateAsync(CurrentUserId(), entity);
         _logger.LogInformation("TourLog created: {LogId} for tour {TourId}", created.Id, created.TourId);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, TourLogMapper.ToDto(created));
     }
@@ -69,7 +82,7 @@ public class TourLogsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<TourLogDto>> Update(Guid id, [FromBody] UpdateTourLogDto dto)
     {
-        var updated = await _service.UpdateAsync(id, entity => TourLogMapper.ApplyUpdate(entity, dto));
+        var updated = await _service.UpdateAsync(CurrentUserId(), id, entity => TourLogMapper.ApplyUpdate(entity, dto));
         return Ok(TourLogMapper.ToDto(updated));
     }
 
@@ -79,7 +92,7 @@ public class TourLogsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)
     {
-        await _service.DeleteAsync(id);
+        await _service.DeleteAsync(CurrentUserId(), id);
         _logger.LogInformation("TourLog deleted: {LogId}", id);
         return NoContent();
     }

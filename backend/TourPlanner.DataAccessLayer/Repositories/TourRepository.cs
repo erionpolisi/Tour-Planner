@@ -23,23 +23,27 @@ public class TourRepository : ITourRepository
         _logger = logger;
     }
 
-    public async Task<List<Tour>> GetAllAsync()
+    public async Task<List<Tour>> GetAllAsync(Guid ownerId)
     {
-        _logger.LogInformation("Loading all tours");
+        _logger.LogInformation("Loading all tours for user {UserId}", ownerId);
         // AsNoTracking → EF doesn't track these entities for change-detection.
         // Faster + uses less memory when we only want to READ data.
-        return await _db.Tours.AsNoTracking().ToListAsync();
+        return await _db.Tours
+            .AsNoTracking()
+            .Where(t => t.UserId == ownerId)
+            .ToListAsync();
     }
 
-    public async Task<Tour?> GetByIdAsync(Guid id)
+    public async Task<Tour?> GetByIdAsync(Guid ownerId, Guid id)
     {
-        _logger.LogInformation("Loading tour {TourId}", id);
-        return await _db.Tours.FirstOrDefaultAsync(t => t.Id == id);
+        _logger.LogInformation("Loading tour {TourId} for user {UserId}", id, ownerId);
+        return await _db.Tours
+            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == ownerId);
     }
 
     public async Task AddAsync(Tour tour)
     {
-        _logger.LogInformation("Adding new tour {TourName}", tour.Name);
+        _logger.LogInformation("Adding new tour {TourName} for user {UserId}", tour.Name, tour.UserId);
         _db.Tours.Add(tour);
         await _db.SaveChangesAsync();
     }
@@ -51,12 +55,15 @@ public class TourRepository : ITourRepository
         await _db.SaveChangesAsync();
     }
 
-    public async Task<bool> DeleteAsync(Guid id)
+    public async Task<bool> DeleteAsync(Guid ownerId, Guid id)
     {
-        var tour = await _db.Tours.FindAsync(id);
+        // FirstOrDefaultAsync (not FindAsync) so the WHERE ownerId filter is applied.
+        var tour = await _db.Tours.FirstOrDefaultAsync(t => t.Id == id && t.UserId == ownerId);
         if (tour is null)
         {
-            _logger.LogWarning("Tried to delete tour {TourId}, but it was not found", id);
+            _logger.LogWarning(
+                "Tried to delete tour {TourId} for user {UserId}, but it was not found or not owned",
+                id, ownerId);
             return false;
         }
 
@@ -66,17 +73,18 @@ public class TourRepository : ITourRepository
         return true;
     }
 
-    public async Task<List<Tour>> GetAllWithLogsAsync(CancellationToken ct = default)
+    public async Task<List<Tour>> GetAllWithLogsAsync(Guid ownerId, CancellationToken ct = default)
     {
-        _logger.LogInformation("Loading all tours with their logs (for export)");
+        _logger.LogInformation("Loading all tours with logs for user {UserId} (export)", ownerId);
         // AsNoTracking is safe here: caller only serializes the result.
         return await _db.Tours
             .AsNoTracking()
+            .Where(t => t.UserId == ownerId)
             .Include(t => t.Logs.OrderBy(l => l.LoggedAt))
             .ToListAsync(ct);
     }
 
-    public async Task<List<TourSearchHit>> SearchAsync(string query, int limit, CancellationToken ct = default)
+    public async Task<List<TourSearchHit>> SearchAsync(Guid ownerId, string query, int limit, CancellationToken ct = default)
     {
         // Callers (TourService) guarantee non-empty; be defensive anyway.
         if (string.IsNullOrWhiteSpace(query))
@@ -92,8 +100,8 @@ public class TourRepository : ITourRepository
         };
 
         _logger.LogInformation(
-            "Full-text search for tours: len={QueryLength} limit={Limit}",
-            query.Length, effectiveLimit);
+            "Full-text search for tours: user={UserId} len={QueryLength} limit={Limit}",
+            ownerId, query.Length, effectiveLimit);
 
         // Web-search style: supports "quoted phrases", -negation, and word OR word.
         // NOTE: `EF.Functions.WebSearchToTsQuery` and `EF.Property<...>` MUST appear
@@ -104,12 +112,12 @@ public class TourRepository : ITourRepository
 
         var results = await _db.Tours
             .AsNoTracking()
-            .Where(t =>
-                EF.Property<NpgsqlTsVector>(t, TourPlannerDbContext.SearchVectorColumn)
-                    .Matches(EF.Functions.WebSearchToTsQuery("simple", query))
-                || t.Logs.Any(l =>
-                    EF.Property<NpgsqlTsVector>(l, TourPlannerDbContext.SearchVectorColumn)
-                        .Matches(EF.Functions.WebSearchToTsQuery("simple", query))))
+            .Where(t => t.UserId == ownerId
+                && (EF.Property<NpgsqlTsVector>(t, TourPlannerDbContext.SearchVectorColumn)
+                        .Matches(EF.Functions.WebSearchToTsQuery("simple", query))
+                    || t.Logs.Any(l =>
+                        EF.Property<NpgsqlTsVector>(l, TourPlannerDbContext.SearchVectorColumn)
+                            .Matches(EF.Functions.WebSearchToTsQuery("simple", query)))))
             .Select(t => new
             {
                 Tour = t,

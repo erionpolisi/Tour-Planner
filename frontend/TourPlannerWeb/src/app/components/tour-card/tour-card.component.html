@@ -43,6 +43,20 @@
       <p class="text-sm text-gray-400 line-clamp-2 mb-4">{{ tour().description }}</p>
     }
 
+    <!-- Computed attributes: server-side derived, read-only -->
+    <div class="flex flex-wrap gap-2 mb-4">
+      <span
+        class="text-xs px-2 py-0.5 rounded-md border border-purple-500/30 bg-purple-500/10 text-purple-200"
+        [title]="tour().popularity + ' log(s)'">
+        {{ tour().popularityLabel }}
+      </span>
+      <span
+        class="text-xs px-2 py-0.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+        [title]="'child-friendliness: ' + tour().childFriendliness + '/100'">
+        {{ tour().childFriendlinessLabel }}
+      </span>
+    </div>
+
     <!-- Stats -->
     <div class="grid grid-cols-2 gap-3 mb-4">
       <div class="p-3 rounded-xl bg-white/5 border border-white/10">

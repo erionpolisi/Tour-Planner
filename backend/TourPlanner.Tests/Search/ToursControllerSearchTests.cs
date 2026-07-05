@@ -1,4 +1,8 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using NUnit.Framework;
@@ -13,11 +17,14 @@ namespace TourPlanner.Tests.Search;
 /// <summary>
 /// Unit tests for the search-related actions on <see cref="ToursController"/>.
 /// The service is mocked so these tests only verify DTO mapping, query-string
-/// parameter handling, and status codes.
+/// parameter handling, and that the controller correctly extracts the user id
+/// from the JWT <c>sub</c> claim and forwards it to the service.
 /// </summary>
 [TestFixture]
 public sealed class ToursControllerSearchTests
 {
+    private static readonly Guid Owner = Guid.Parse("22222222-2222-2222-2222-222222222222");
+
     private Mock<ITourService> _service = null!;
     private Mock<ITourImportExportService> _importExport = null!;
     private ToursController _controller = null!;
@@ -31,11 +38,22 @@ public sealed class ToursControllerSearchTests
             _service.Object,
             _importExport.Object,
             NullLogger<ToursController>.Instance);
+
+        // Fake a signed-in user: the controller reads the JWT 'sub' claim.
+        var identity = new ClaimsIdentity(new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, Owner.ToString()),
+        }, authenticationType: "Test");
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) },
+        };
     }
 
     private static Tour SampleTour(string name = "Wachau valley") => new()
     {
         Id = Guid.NewGuid(),
+        UserId = Owner,
         Name = name,
         Description = "A ride along the Danube",
         From = "Melk",
@@ -61,7 +79,7 @@ public sealed class ToursControllerSearchTests
             Duration = TimeSpan.FromMinutes(60),
             Rating = 4,
         };
-        _service.Setup(s => s.SearchAsync("Danube", 25, It.IsAny<CancellationToken>()))
+        _service.Setup(s => s.SearchAsync(Owner, "Danube", 25, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<TourSearchResult>
             {
                 new(tour, MatchedInTour: true, MatchedLogs: new[] { log }),
@@ -84,7 +102,7 @@ public sealed class ToursControllerSearchTests
     [Test]
     public async Task Search_EmptyServiceResult_ReturnsOkEmptyList()
     {
-        _service.Setup(s => s.SearchAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+        _service.Setup(s => s.SearchAsync(Owner, It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<TourSearchResult>());
 
         var action = await _controller.Search("nothing-matches", 50, CancellationToken.None);
@@ -98,7 +116,7 @@ public sealed class ToursControllerSearchTests
     [Test]
     public async Task Search_NullQueryString_ForwardsEmptyStringToService()
     {
-        _service.Setup(s => s.SearchAsync("", 10, It.IsAny<CancellationToken>()))
+        _service.Setup(s => s.SearchAsync(Owner, "", 10, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<TourSearchResult>())
             .Verifiable();
 
@@ -111,7 +129,7 @@ public sealed class ToursControllerSearchTests
     public async Task Search_ForwardsLimitAndCancellationToService()
     {
         using var cts = new CancellationTokenSource();
-        _service.Setup(s => s.SearchAsync("hello", 12, cts.Token))
+        _service.Setup(s => s.SearchAsync(Owner, "hello", 12, cts.Token))
             .ReturnsAsync(new List<TourSearchResult>())
             .Verifiable();
 
