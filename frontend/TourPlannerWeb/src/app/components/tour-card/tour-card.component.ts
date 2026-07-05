@@ -11,7 +11,7 @@ export class TourCardComponent {
   readonly tour = input.required<Tour>();
   readonly open = output<Tour>();
   readonly edit = output<Tour>();
-  readonly delete = output<number>();
+  readonly delete = output<string>();
 
   protected readonly icons = { MapPin, Clock, Edit2, Trash2, Footprints, Bike, Car, CircleCheck, CalendarClock };
 

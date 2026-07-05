@@ -1,8 +1,9 @@
-export type TransportType = 'walking' | 'cycling' | 'driving';
+export type   TransportType = 'walking' | 'cycling' | 'driving';
 export type TourStatus = 'planned' | 'completed';
 
 export interface Tour {
-  id: number;
+  /** Server-generated UUID (string). */
+  id: string;
   name: string;
   description: string;
   from: string;
@@ -33,9 +34,16 @@ export const DEFAULT_TOUR_IMAGES: readonly string[] = [
   'https://picsum.photos/seed/road/800/400',
 ];
 
-/** Pick a deterministic default image for a given id. */
-export function getDefaultTourImage(id: number): string {
-  const i = Math.abs(id | 0) % DEFAULT_TOUR_IMAGES.length;
+/**
+ * Pick a deterministic default image for a given id.
+ * Hashes the id-string into a stable index across the gallery.
+ */
+export function getDefaultTourImage(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  }
+  const i = Math.abs(hash) % DEFAULT_TOUR_IMAGES.length;
   return DEFAULT_TOUR_IMAGES[i];
 }
 

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace TourPlanner.BusinessLayer.Dtos.Users;
+namespace TourPlanner.API.Dtos.Users;
 
 public class LoginDto
 {

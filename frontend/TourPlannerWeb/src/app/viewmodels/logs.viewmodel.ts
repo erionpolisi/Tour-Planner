@@ -24,7 +24,7 @@ export class LogsViewModel {
     );
   });
 
-  deleteLog(id: number): void {
+  deleteLog(id: string): void {
     this.tourLogService.deleteLog(id);
   }
 

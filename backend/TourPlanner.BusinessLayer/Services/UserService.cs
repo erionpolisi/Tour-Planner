@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
-using TourPlanner.BusinessLayer.Dtos.Users;
 using TourPlanner.BusinessLayer.Exceptions;
-using TourPlanner.BusinessLayer.Mappers;
 using TourPlanner.DataAccessLayer.Repositories;
 using TourPlanner.Domain;
 
@@ -24,9 +22,9 @@ public class UserService : IUserService
         _logger = logger;
     }
 
-    public async Task<UserDto> RegisterAsync(RegisterDto dto)
+    public async Task<User> RegisterAsync(string name, string email, string password)
     {
-        var existing = await _users.GetByEmailAsync(dto.Email);
+        var existing = await _users.GetByEmailAsync(email);
         if (existing is not null)
         {
             _logger.LogWarning("Registration attempt with already-used email");
@@ -36,23 +34,23 @@ public class UserService : IUserService
         var user = new User
         {
             Id = Guid.NewGuid(),
-            Name = dto.Name,
-            Email = dto.Email,
+            Name = name,
+            Email = email,
             PasswordHash = string.Empty, // overwritten below — required init for record
             Avatar = null,
             CreatedAt = DateTime.UtcNow,
         };
         // Hash the password (PasswordHasher generates and embeds a fresh salt automatically).
-        user.PasswordHash = _hasher.HashPassword(user, dto.Password);
+        user.PasswordHash = _hasher.HashPassword(user, password);
 
         await _users.AddAsync(user);
         _logger.LogInformation("Registered new user {UserId}", user.Id);
-        return UserMapper.ToDto(user);
+        return user;
     }
 
-    public async Task<UserDto> LoginAsync(LoginDto dto)
+    public async Task<User> LoginAsync(string email, string password)
     {
-        var user = await _users.GetByEmailAsync(dto.Email);
+        var user = await _users.GetByEmailAsync(email);
         if (user is null)
         {
             _logger.LogWarning("Login failed: unknown email");
@@ -60,7 +58,7 @@ public class UserService : IUserService
             throw new ValidationException("Invalid credentials.");
         }
 
-        var result = _hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password);
+        var result = _hasher.VerifyHashedPassword(user, user.PasswordHash, password);
         if (result == PasswordVerificationResult.Failed)
         {
             _logger.LogWarning("Login failed: wrong password for user {UserId}", user.Id);
@@ -70,19 +68,16 @@ public class UserService : IUserService
         // If the hash format is outdated (e.g. iteration count bumped), rehash silently.
         if (result == PasswordVerificationResult.SuccessRehashNeeded)
         {
-            user.PasswordHash = _hasher.HashPassword(user, dto.Password);
+            user.PasswordHash = _hasher.HashPassword(user, password);
             await _users.UpdateAsync(user);
             _logger.LogInformation("Password hash upgraded for user {UserId}", user.Id);
         }
 
         _logger.LogInformation("User {UserId} logged in", user.Id);
-        return UserMapper.ToDto(user);
+        return user;
     }
 
-    public async Task<UserDto> GetByIdAsync(Guid id)
-    {
-        var user = await _users.GetByIdAsync(id)
+    public async Task<User> GetByIdAsync(Guid id) =>
+        await _users.GetByIdAsync(id)
             ?? throw new NotFoundException($"User {id} not found.");
-        return UserMapper.ToDto(user);
-    }
 }

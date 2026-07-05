@@ -18,7 +18,10 @@ public class TourLogRepository : ITourLogRepository
     public async Task<List<TourLog>> GetAllAsync()
     {
         _logger.LogInformation("Loading all tour logs");
-        return await _db.TourLogs.AsNoTracking().ToListAsync();
+        return await _db.TourLogs
+            .AsNoTracking()
+            .Include(l => l.Tour)
+            .ToListAsync();
     }
 
     public async Task<List<TourLog>> GetByTourIdAsync(Guid tourId)
@@ -26,6 +29,7 @@ public class TourLogRepository : ITourLogRepository
         _logger.LogInformation("Loading logs for tour {TourId}", tourId);
         return await _db.TourLogs
             .AsNoTracking()
+            .Include(l => l.Tour)
             .Where(l => l.TourId == tourId)
             .OrderByDescending(l => l.LoggedAt)
             .ToListAsync();
@@ -34,7 +38,9 @@ public class TourLogRepository : ITourLogRepository
     public async Task<TourLog?> GetByIdAsync(Guid id)
     {
         _logger.LogInformation("Loading tour log {LogId}", id);
-        return await _db.TourLogs.FirstOrDefaultAsync(l => l.Id == id);
+        return await _db.TourLogs
+            .Include(l => l.Tour)
+            .FirstOrDefaultAsync(l => l.Id == id);
     }
 
     public async Task AddAsync(TourLog log)

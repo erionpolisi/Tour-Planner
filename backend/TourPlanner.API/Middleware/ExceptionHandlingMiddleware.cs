@@ -37,6 +37,12 @@ public class ExceptionHandlingMiddleware
         {
             await WriteProblem(context, HttpStatusCode.BadRequest, ex.Message);
         }
+        catch (ArgumentException ex)
+        {
+            // Thrown by the API-side mappers on invalid enum strings, etc.
+            // Treat as a bad request rather than a 500.
+            await WriteProblem(context, HttpStatusCode.BadRequest, ex.Message);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception while processing {Path}", context.Request.Path);

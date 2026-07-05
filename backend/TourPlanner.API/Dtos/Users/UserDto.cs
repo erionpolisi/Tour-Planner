@@ -1,4 +1,4 @@
-namespace TourPlanner.BusinessLayer.Dtos.Users;
+namespace TourPlanner.API.Dtos.Users;
 
 /// <summary>
 /// Public user profile.

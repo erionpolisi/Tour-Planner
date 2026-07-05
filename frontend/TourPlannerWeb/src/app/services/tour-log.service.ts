@@ -1,27 +1,60 @@
-import { Injectable, signal, computed } from '@angular/core';
-import type { Signal } from '@angular/core';
-import { TourLog } from '../models/tour-log.model';
+import { Injectable, signal, computed, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { TourLog, Difficulty } from '../models/tour-log.model';
 
+/**
+ * Server-side TourLog DTO. Mirrors backend BL DTO 1:1.
+ * Backend already returns distance in km and duration in minutes,
+ * so no client-side unit conversion is needed.
+ */
+interface TourLogDto {
+  id: string;
+  tourId: string;
+  tourName: string;
+  loggedAt: string;      // ISO-8601 UTC
+  comment?: string | null;
+  difficulty: string;    // "easy" | "medium" | "hard"
+  totalDistance: number; // km
+  duration: number;      // minutes
+  rating: number;
+}
+
+interface CreateLogBody {
+  tourId: string;
+  loggedAt: string;
+  comment: string;
+  difficulty: Difficulty;
+  totalDistance: number;
+  duration: number;
+  rating: number;
+}
+
+type UpdateLogBody = Omit<CreateLogBody, 'tourId'>;
+
+const API_BASE = 'http://localhost:5102/api/logs';
+
+/**
+ * TourLog service backed by the API.
+ *
+ * Mirrors the TourService pattern: all logs are held in a signal,
+ * derived views (`logsForTour`, stats) are computed signals so the
+ * UI updates automatically when the underlying list changes.
+ *
+ * Public methods stay `void`/sync — the HTTP call runs internally
+ * and updates the signal on success, so existing viewmodels keep
+ * working unchanged.
+ */
 @Injectable({
   providedIn: 'root',
 })
 export class TourLogService {
-  private readonly _logs = signal<TourLog[]>([
-    { id: 1, tourId: 1, tourName: 'Alpine Adventure', dateTime: '2026-04-15 09:00', comment: 'Great weather, amazing views of the Alps!', difficulty: 'medium', totalDistance: 295, duration: '4h 25m', rating: 5 },
-    { id: 2, tourId: 1, tourName: 'Alpine Adventure', dateTime: '2026-03-20 08:30', comment: 'Rainy but still enjoyable. Roads were a bit slippery.', difficulty: 'hard', totalDistance: 302, duration: '5h 10m', rating: 3 },
-    { id: 3, tourId: 2, tourName: 'Coastal Route', dateTime: '2026-04-01 07:00', comment: 'Beautiful coastline, stopped for lunch in a small village.', difficulty: 'easy', totalDistance: 348, duration: '5h 30m', rating: 4 },
-    { id: 4, tourId: 3, tourName: 'Mountain Trail', dateTime: '2026-04-10 06:00', comment: 'Challenging climb but rewarding. Perfect trail conditions.', difficulty: 'hard', totalDistance: 175, duration: '3h 15m', rating: 5 },
-    { id: 5, tourId: 4, tourName: 'Historic Cities', dateTime: '2026-03-28 10:00', comment: 'Loved the architecture in both cities. Must visit again!', difficulty: 'easy', totalDistance: 538, duration: '7h 30m', rating: 4 },
-    { id: 6, tourId: 5, tourName: 'River Valley', dateTime: '2026-04-05 11:00', comment: 'Scenic river path, very peaceful.', difficulty: 'easy', totalDistance: 148, duration: '2h 50m', rating: 4 },
-    { id: 7, tourId: 6, tourName: 'Desert Highway', dateTime: '2026-02-14 05:30', comment: 'Hot but incredible sunset views along the highway.', difficulty: 'medium', totalDistance: 472, duration: '6h 00m', rating: 5 },
-    { id: 8, tourId: 3, tourName: 'Mountain Trail', dateTime: '2026-04-22 07:00', comment: 'Second attempt, much better pace this time.', difficulty: 'medium', totalDistance: 180, duration: '2h 55m', rating: 5 },
-  ]);
+  private readonly http = inject(HttpClient);
 
-  private _nextId = 9;
+  private readonly _logs = signal<TourLog[]>([]);
 
   readonly logs = this._logs.asReadonly();
 
-  logsForTour(tourId: number) {
+  logsForTour(tourId: string) {
     return computed(() => this._logs().filter((l) => l.tourId === tourId));
   }
 
@@ -43,15 +76,91 @@ export class TourLogService {
     return (logs.reduce((sum, l) => sum + l.rating, 0) / logs.length).toFixed(1);
   });
 
-  deleteLog(id: number): void {
-    this._logs.update((logs) => logs.filter((l) => l.id !== id));
+  constructor() {
+    this.reload();
+  }
+
+  reload(): void {
+    this.http.get<TourLogDto[]>(API_BASE).subscribe({
+      next: (dtos) => this._logs.set(dtos.map((d) => this.fromDto(d))),
+      error: (err) => console.error('Failed to load logs', err),
+    });
+  }
+
+  deleteLog(id: string): void {
+    this.http.delete<void>(`${API_BASE}/${id}`).subscribe({
+      next: () => this._logs.update((logs) => logs.filter((l) => l.id !== id)),
+      error: (err) => console.error(`Failed to delete log ${id}`, err),
+    });
   }
 
   updateLog(updated: TourLog): void {
-    this._logs.update((logs) => logs.map((l) => (l.id === updated.id ? updated : l)));
+    const body: UpdateLogBody = {
+      loggedAt: this.toIsoUtc(updated.dateTime),
+      comment: updated.comment,
+      difficulty: updated.difficulty,
+      totalDistance: updated.totalDistance,
+      duration: updated.duration,
+      rating: updated.rating,
+    };
+    this.http.put<TourLogDto>(`${API_BASE}/${updated.id}`, body).subscribe({
+      next: (dto) => {
+        const log = this.fromDto(dto);
+        this._logs.update((logs) => logs.map((l) => (l.id === log.id ? log : l)));
+      },
+      error: (err) => console.error(`Failed to update log ${updated.id}`, err),
+    });
   }
 
   addLog(log: Omit<TourLog, 'id'>): void {
-    this._logs.update((logs) => [...logs, { ...log, id: this._nextId++ }]);
+    const body: CreateLogBody = {
+      tourId: log.tourId,
+      loggedAt: this.toIsoUtc(log.dateTime),
+      comment: log.comment,
+      difficulty: log.difficulty,
+      totalDistance: log.totalDistance,
+      duration: log.duration,
+      rating: log.rating,
+    };
+    this.http.post<TourLogDto>(API_BASE, body).subscribe({
+      next: (dto) => {
+        const created = this.fromDto(dto);
+        this._logs.update((logs) => [...logs, created]);
+      },
+      error: (err) => console.error('Failed to create log', err),
+    });
+  }
+
+  /** Normalise a server DTO into the UI-facing TourLog shape. */
+  private fromDto(dto: TourLogDto): TourLog {
+    return {
+      id: dto.id,
+      tourId: dto.tourId,
+      tourName: dto.tourName,
+      dateTime: dto.loggedAt,
+      comment: dto.comment ?? '',
+      difficulty: this.parseDifficulty(dto.difficulty),
+      totalDistance: dto.totalDistance,
+      duration: dto.duration,
+      rating: dto.rating,
+    };
+  }
+
+  private parseDifficulty(value: string): Difficulty {
+    const v = value?.toLowerCase();
+    return v === 'easy' || v === 'medium' || v === 'hard' ? v : 'medium';
+  }
+
+  /**
+   * Accepts "YYYY-MM-DD HH:mm[:ss]" (form input) or any ISO-8601 string and
+   * returns an ISO-8601 UTC string for the API. Falls back to the raw input
+   * if parsing fails — the backend will then reply with a 400.
+   */
+  private toIsoUtc(value: string): string {
+    if (!value) return value;
+    const normalized = value.includes('T') ? value : value.replace(' ', 'T');
+    const d = new Date(normalized);
+    return Number.isNaN(d.getTime()) ? value : d.toISOString();
   }
 }
+

@@ -1,16 +1,20 @@
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
 export interface TourLog {
-  id: number;
-  tourId: number;
+  /** Server-generated UUID. */
+  id: string;
+  /** UUID of the parent tour. */
+  tourId: string;
+  /** Convenience copy of the tour name (joined server-side). */
   tourName: string;
+  /** ISO-8601 UTC timestamp (e.g. "2026-04-15T09:00:00Z"). */
   dateTime: string;
   comment: string;
   difficulty: Difficulty;
   /** Inherited from the parent Tour at log-creation time (km). Read-only. */
   totalDistance: number;
-  /** Inherited from the parent Tour at log-creation time (e.g. "4h 25m"). Read-only. */
-  duration: string;
+  /** Inherited from the parent Tour at log-creation time, in MINUTES. Read-only. */
+  duration: number;
   rating: number;
 }
 
@@ -41,7 +45,7 @@ export interface LogFormErrors {
 }
 
 export interface LogFormInput {
-  tourId: number;
+  tourId: string;
   dateTime: string;
   comment: string;
   difficulty: Difficulty | undefined;
@@ -58,7 +62,7 @@ const MAX_COMMENT_LENGTH = 500;
 export function validateLogForm(form: LogFormInput): LogFormErrors {
   const errs: LogFormErrors = {};
 
-  if (!form.tourId || form.tourId <= 0) {
+  if (!form.tourId || form.tourId.trim() === '') {
     errs.tourId = 'Please select a tour.';
   }
 

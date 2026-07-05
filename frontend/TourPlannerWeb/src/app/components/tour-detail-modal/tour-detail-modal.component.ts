@@ -72,7 +72,7 @@ export class TourDetailModalComponent {
     this.logDetailVm.open(log);
   }
 
-  onDeleteLog(event: Event, id: number): void {
+  onDeleteLog(event: Event, id: string): void {
     event.stopPropagation();
     this.vm.deleteLog(id);
   }
@@ -99,7 +99,7 @@ export class TourDetailModalComponent {
   /** Image for the edit preview. */
   protected editImage(): string {
     const f = this.vm.editForm();
-    return getTourImageUrl({ id: f.id ?? 0, imageUrl: f.imageUrl ?? '' });
+    return getTourImageUrl({ id: f.id ?? '', imageUrl: f.imageUrl ?? '' });
   }
 
   protected selectPreset(url: string): void {

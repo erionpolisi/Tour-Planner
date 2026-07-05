@@ -63,7 +63,7 @@ export class TourDetailViewModel {
     return getRatingStars(rating);
   }
 
-  deleteLog(id: number): void {
+  deleteLog(id: string): void {
     this.tourLogService.deleteLog(id);
   }
 

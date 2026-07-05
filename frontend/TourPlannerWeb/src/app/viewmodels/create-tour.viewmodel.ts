@@ -108,7 +108,6 @@ export class CreateTourViewModel {
       transportType: f.transportType,
       distance: f.distance,
       duration: f.duration,
-      status: 'planned',
       color,
       imageUrl: f.imageUrl,
     });

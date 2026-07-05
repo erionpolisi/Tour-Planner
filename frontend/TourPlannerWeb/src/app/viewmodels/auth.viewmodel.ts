@@ -59,7 +59,9 @@ export class AuthViewModel {
         : await this.auth.register({ name: f.name, email: f.email, password: f.password });
 
       if (!ok) {
-        this.error.set('Invalid credentials.');
+        // Pull the specific message from the auth service if available
+        // (e.g. "Email already in use." for register, "Invalid credentials." for login).
+        this.error.set(this.auth.lastError() ?? 'Invalid credentials.');
         return;
       }
 

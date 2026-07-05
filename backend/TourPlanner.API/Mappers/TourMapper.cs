@@ -1,12 +1,15 @@
-using TourPlanner.BusinessLayer.Dtos.Tours;
+using TourPlanner.API.Dtos.Tours;
 using TourPlanner.Domain;
 
-namespace TourPlanner.BusinessLayer.Mappers;
+namespace TourPlanner.API.Mappers;
 
 /// <summary>
 /// Manual mapper between Tour entity and Tour DTOs.
 /// Handles unit conversion (entity: meters/seconds, DTO: km/minutes)
-/// and enum-to-string conversion (entity: enum, DTO: lowercase string).
+/// and enum↔string translation at the API boundary.
+///
+/// Throws <see cref="ArgumentException"/> on invalid enum strings; the
+/// exception-handling middleware translates that into HTTP 400.
 /// </summary>
 public static class TourMapper
 {

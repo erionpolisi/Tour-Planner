@@ -1,8 +1,7 @@
 using Microsoft.Extensions.Logging;
-using TourPlanner.BusinessLayer.Dtos.TourLogs;
 using TourPlanner.BusinessLayer.Exceptions;
-using TourPlanner.BusinessLayer.Mappers;
 using TourPlanner.DataAccessLayer.Repositories;
+using TourPlanner.Domain;
 
 namespace TourPlanner.BusinessLayer.Services;
 
@@ -22,70 +21,45 @@ public class TourLogService : ITourLogService
         _logger = logger;
     }
 
-    public async Task<List<TourLogDto>> GetAllAsync()
-    {
-        var entities = await _logs.GetAllAsync();
-        return await MapWithTourNamesAsync(entities);
-    }
+    public Task<List<TourLog>> GetAllAsync() => _logs.GetAllAsync();
 
-    public async Task<List<TourLogDto>> GetByTourIdAsync(Guid tourId)
+    public async Task<List<TourLog>> GetByTourIdAsync(Guid tourId)
     {
         // Verify the parent tour exists, so callers get 404 (not an empty list)
         // when they hit a non-existent tour id.
-        var tour = await _tours.GetByIdAsync(tourId)
+        _ = await _tours.GetByIdAsync(tourId)
             ?? throw new NotFoundException($"Tour {tourId} not found.");
 
-        var entities = await _logs.GetByTourIdAsync(tourId);
-        return entities.Select(e => TourLogMapper.ToDto(e, tour.Name)).ToList();
+        return await _logs.GetByTourIdAsync(tourId);
     }
 
-    public async Task<TourLogDto> GetByIdAsync(Guid id)
-    {
-        var entity = await _logs.GetByIdAsync(id)
+    public async Task<TourLog> GetByIdAsync(Guid id) =>
+        await _logs.GetByIdAsync(id)
             ?? throw new NotFoundException($"Tour log {id} not found.");
-        var tour = await _tours.GetByIdAsync(entity.TourId);
-        return TourLogMapper.ToDto(entity, tour?.Name ?? "");
-    }
 
-    public async Task<TourLogDto> CreateAsync(CreateTourLogDto dto)
+    public async Task<TourLog> CreateAsync(TourLog log)
     {
         // Make sure the parent tour exists before creating a log for it.
-        var tour = await _tours.GetByIdAsync(dto.TourId)
-            ?? throw new NotFoundException($"Tour {dto.TourId} not found.");
+        _ = await _tours.GetByIdAsync(log.TourId)
+            ?? throw new NotFoundException($"Tour {log.TourId} not found.");
 
-        TourPlanner.Domain.TourLog entity;
-        try
-        {
-            entity = TourLogMapper.FromCreateDto(dto);
-        }
-        catch (ArgumentException ex)
-        {
-            throw new ValidationException(ex.Message);
-        }
+        await _logs.AddAsync(log);
+        _logger.LogInformation("Created tour log {LogId} for tour {TourId}", log.Id, log.TourId);
 
-        await _logs.AddAsync(entity);
-        _logger.LogInformation("Created tour log {LogId} for tour {TourId}", entity.Id, entity.TourId);
-        return TourLogMapper.ToDto(entity, tour.Name);
+        // Reload so the Tour navigation is populated for the mapper on the way out.
+        return await _logs.GetByIdAsync(log.Id) ?? log;
     }
 
-    public async Task<TourLogDto> UpdateAsync(Guid id, UpdateTourLogDto dto)
+    public async Task<TourLog> UpdateAsync(Guid id, Action<TourLog> applyChanges)
     {
         var entity = await _logs.GetByIdAsync(id)
             ?? throw new NotFoundException($"Tour log {id} not found.");
 
-        try
-        {
-            TourLogMapper.ApplyUpdate(entity, dto);
-        }
-        catch (ArgumentException ex)
-        {
-            throw new ValidationException(ex.Message);
-        }
+        applyChanges(entity);
 
         await _logs.UpdateAsync(entity);
-        var tour = await _tours.GetByIdAsync(entity.TourId);
         _logger.LogInformation("Updated tour log {LogId}", id);
-        return TourLogMapper.ToDto(entity, tour?.Name ?? "");
+        return entity;
     }
 
     public async Task DeleteAsync(Guid id)
@@ -93,26 +67,5 @@ public class TourLogService : ITourLogService
         var deleted = await _logs.DeleteAsync(id);
         if (!deleted) throw new NotFoundException($"Tour log {id} not found.");
         _logger.LogInformation("Deleted tour log {LogId}", id);
-    }
-
-    /// <summary>
-    /// Helper: load all tours referenced by the given logs in one query,
-    /// then map them. Avoids the N+1 problem for the "all logs" endpoint.
-    /// </summary>
-    private async Task<List<TourLogDto>> MapWithTourNamesAsync(List<TourPlanner.Domain.TourLog> entities)
-    {
-        if (entities.Count == 0) return new List<TourLogDto>();
-
-        var tourIds = entities.Select(l => l.TourId).Distinct().ToList();
-        var tours = new Dictionary<Guid, string>();
-        foreach (var tid in tourIds)
-        {
-            var t = await _tours.GetByIdAsync(tid);
-            if (t is not null) tours[tid] = t.Name;
-        }
-
-        return entities
-            .Select(e => TourLogMapper.ToDto(e, tours.GetValueOrDefault(e.TourId, "")))
-            .ToList();
     }
 }
