@@ -1,19 +1,20 @@
-using TourPlanner.BusinessLayer.Dtos.TourLogs;
+using TourPlanner.API.Dtos.TourLogs;
 using TourPlanner.Domain;
 
-namespace TourPlanner.BusinessLayer.Mappers;
+namespace TourPlanner.API.Mappers;
 
 public static class TourLogMapper
 {
     /// <summary>
-    /// Maps a log entity to a DTO. Requires the parent tour name to be supplied
-    /// separately, because the entity itself doesn't carry the name redundantly.
+    /// Maps a log entity to a DTO. Prefers the loaded <see cref="TourLog.Tour"/>
+    /// navigation property for the tour name; falls back to the empty string
+    /// if the caller didn't Include(...) it.
     /// </summary>
-    public static TourLogDto ToDto(TourLog entity, string tourName) => new()
+    public static TourLogDto ToDto(TourLog entity) => new()
     {
         Id = entity.Id,
         TourId = entity.TourId,
-        TourName = tourName,
+        TourName = entity.Tour?.Name ?? string.Empty,
         LoggedAt = entity.LoggedAt,
         Comment = entity.Comment,
         Difficulty = entity.Difficulty.ToString().ToLowerInvariant(),

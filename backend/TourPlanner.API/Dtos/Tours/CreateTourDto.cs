@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace TourPlanner.BusinessLayer.Dtos.Tours;
+namespace TourPlanner.API.Dtos.Tours;
 
 /// <summary>
 /// Payload for POST /api/tours.

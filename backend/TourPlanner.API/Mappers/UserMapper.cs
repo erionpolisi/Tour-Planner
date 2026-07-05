@@ -1,7 +1,7 @@
-using TourPlanner.BusinessLayer.Dtos.Users;
+using TourPlanner.API.Dtos.Users;
 using TourPlanner.Domain;
 
-namespace TourPlanner.BusinessLayer.Mappers;
+namespace TourPlanner.API.Mappers;
 
 public static class UserMapper
 {

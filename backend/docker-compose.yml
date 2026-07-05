@@ -12,5 +12,22 @@ services:
     volumes:
       - tourplanner_pgdata:/var/lib/postgresql/data
 
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: tourplanner-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "127.0.0.1:5050:80"
+    depends_on:
+      - postgres
+    volumes:
+      - tourplanner_pgadmin:/var/lib/pgadmin
+
 volumes:
   tourplanner_pgdata:
+  tourplanner_pgadmin:

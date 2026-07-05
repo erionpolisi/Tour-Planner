@@ -1,4 +1,4 @@
-namespace TourPlanner.BusinessLayer.Dtos.Tours;
+namespace TourPlanner.API.Dtos.Tours;
 
 /// <summary>
 /// Tour as returned by the API.

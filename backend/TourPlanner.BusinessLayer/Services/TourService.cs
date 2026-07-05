@@ -1,8 +1,7 @@
 using Microsoft.Extensions.Logging;
-using TourPlanner.BusinessLayer.Dtos.Tours;
 using TourPlanner.BusinessLayer.Exceptions;
-using TourPlanner.BusinessLayer.Mappers;
 using TourPlanner.DataAccessLayer.Repositories;
+using TourPlanner.Domain;
 
 namespace TourPlanner.BusinessLayer.Services;
 
@@ -17,53 +16,29 @@ public class TourService : ITourService
         _logger = logger;
     }
 
-    public async Task<List<TourDto>> GetAllAsync()
-    {
-        var entities = await _tours.GetAllAsync();
-        return entities.Select(TourMapper.ToDto).ToList();
-    }
+    public Task<List<Tour>> GetAllAsync() => _tours.GetAllAsync();
 
-    public async Task<TourDto> GetByIdAsync(Guid id)
-    {
-        var entity = await _tours.GetByIdAsync(id)
+    public async Task<Tour> GetByIdAsync(Guid id) =>
+        await _tours.GetByIdAsync(id)
             ?? throw new NotFoundException($"Tour {id} not found.");
-        return TourMapper.ToDto(entity);
-    }
 
-    public async Task<TourDto> CreateAsync(CreateTourDto dto)
+    public async Task<Tour> CreateAsync(Tour tour)
     {
-        Domain.Tour entity;
-        try
-        {
-            entity = TourMapper.FromCreateDto(dto);
-        }
-        catch (ArgumentException ex)
-        {
-            throw new ValidationException(ex.Message);
-        }
-
-        await _tours.AddAsync(entity);
-        _logger.LogInformation("Created tour {TourId} ({Name})", entity.Id, entity.Name);
-        return TourMapper.ToDto(entity);
+        await _tours.AddAsync(tour);
+        _logger.LogInformation("Created tour {TourId} ({Name})", tour.Id, tour.Name);
+        return tour;
     }
 
-    public async Task<TourDto> UpdateAsync(Guid id, UpdateTourDto dto)
+    public async Task<Tour> UpdateAsync(Guid id, Action<Tour> applyChanges)
     {
         var entity = await _tours.GetByIdAsync(id)
             ?? throw new NotFoundException($"Tour {id} not found.");
 
-        try
-        {
-            TourMapper.ApplyUpdate(entity, dto);
-        }
-        catch (ArgumentException ex)
-        {
-            throw new ValidationException(ex.Message);
-        }
+        applyChanges(entity);
 
         await _tours.UpdateAsync(entity);
         _logger.LogInformation("Updated tour {TourId}", id);
-        return TourMapper.ToDto(entity);
+        return entity;
     }
 
     public async Task DeleteAsync(Guid id)

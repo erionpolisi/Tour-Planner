@@ -1,27 +1,25 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace TourPlanner.BusinessLayer.Dtos.TourLogs;
+namespace TourPlanner.API.Dtos.TourLogs;
 
-public class CreateTourLogDto
+/// <summary>
+/// Payload for PUT /api/logs/{id}.
+/// TourId is intentionally NOT here — a log doesn't move between tours.
+/// </summary>
+public class UpdateTourLogDto
 {
-    [Required]
-    public Guid TourId { get; set; }
-
-    /// <summary>UTC timestamp of when the tour was performed.</summary>
     [Required]
     public DateTime LoggedAt { get; set; }
 
     [StringLength(2000)]
     public string? Comment { get; set; }
 
-    /// <summary>"easy" | "medium" | "hard"</summary>
     [Required]
     public string Difficulty { get; set; } = string.Empty;
 
     [Range(0, 100_000)]
     public double TotalDistance { get; set; }
 
-    /// <summary>Duration in minutes.</summary>
     [Range(0, 100_000)]
     public int Duration { get; set; }
 
