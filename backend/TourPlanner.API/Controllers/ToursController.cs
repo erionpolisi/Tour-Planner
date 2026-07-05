@@ -35,6 +35,23 @@ public class ToursController : ControllerBase
         return Ok(tours.Select(TourMapper.ToDto).ToList());
     }
 
+    /// <summary>
+    /// GET /api/tours/search?q=…&amp;limit=… — PostgreSQL full-text search
+    /// across tour names, descriptions, locations, transport/status, log
+    /// comments, difficulty and rating. Empty queries return an empty list
+    /// with 200 OK (not 400) so clients can render "no results" naturally.
+    /// </summary>
+    [HttpGet("search")]
+    [ProducesResponseType(typeof(List<TourSearchResultDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<TourSearchResultDto>>> Search(
+        [FromQuery] string? q,
+        [FromQuery] int limit,
+        CancellationToken ct)
+    {
+        var results = await _service.SearchAsync(q ?? string.Empty, limit, ct);
+        return Ok(results.Select(TourSearchResultMapper.ToDto).ToList());
+    }
+
     /// <summary>GET /api/tours/{id} — single tour by id.</summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(TourDto), StatusCodes.Status200OK)]

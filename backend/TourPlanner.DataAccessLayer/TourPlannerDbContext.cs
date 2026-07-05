@@ -1,10 +1,17 @@
 using Microsoft.EntityFrameworkCore;
+using NpgsqlTypes;
 using TourPlanner.Domain;
 
 namespace TourPlanner.DataAccessLayer;
 
 public class TourPlannerDbContext : DbContext
 {
+    /// <summary>
+    /// Name of the shadow tsvector column used for PostgreSQL full-text search.
+    /// Access via <c>EF.Property&lt;NpgsqlTsVector&gt;(entity, TourPlannerDbContext.SearchVectorColumn)</c>.
+    /// </summary>
+    public const string SearchVectorColumn = "SearchVector";
+
     public TourPlannerDbContext(DbContextOptions<TourPlannerDbContext> options)
         : base(options)
     {
@@ -31,6 +38,46 @@ public class TourPlannerDbContext : DbContext
         modelBuilder.Entity<TourLog>()
             .Property(l => l.Difficulty)
             .HasConversion<string>();
+
+        // --- Full-text search --------------------------------------------------
+        // Shadow columns of type tsvector, computed by PostgreSQL from the source
+        // columns and stored on disk. Indexed with GIN for fast @@ lookups.
+        // The 'simple' text-search config keeps the indexing language-agnostic:
+        // it lowercases and tokenizes but skips stemming / stopword removal,
+        // which suits tour names, cities, and enum-as-text values best.
+
+        modelBuilder.Entity<Tour>()
+            .Property<NpgsqlTsVector>(SearchVectorColumn)
+            .HasComputedColumnSql(
+                """
+                to_tsvector('simple',
+                    coalesce("Name", '') || ' ' ||
+                    coalesce("Description", '') || ' ' ||
+                    coalesce("From", '') || ' ' ||
+                    coalesce("To", '') || ' ' ||
+                    coalesce("TransportType", '') || ' ' ||
+                    coalesce("Status", ''))
+                """,
+                stored: true);
+
+        modelBuilder.Entity<Tour>()
+            .HasIndex(SearchVectorColumn)
+            .HasMethod("GIN");
+
+        modelBuilder.Entity<TourLog>()
+            .Property<NpgsqlTsVector>(SearchVectorColumn)
+            .HasComputedColumnSql(
+                """
+                to_tsvector('simple',
+                    coalesce("Comment", '') || ' ' ||
+                    coalesce("Difficulty", '') || ' ' ||
+                    "Rating"::text)
+                """,
+                stored: true);
+
+        modelBuilder.Entity<TourLog>()
+            .HasIndex(SearchVectorColumn)
+            .HasMethod("GIN");
 
         // A user's email must be unique
         modelBuilder.Entity<User>()
