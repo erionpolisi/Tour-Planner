@@ -1,6 +1,7 @@
 import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { Tour, TransportType, TourStatus, getDefaultTourImage } from '../models/tour.model';
 import { Stat } from '../models/stat.model';
 
@@ -198,18 +199,21 @@ export class TourService {
    * assign to a hidden anchor, click it. No server-side redirect needed.
    */
   async exportAll(): Promise<void> {
-    const response = await fetch(`${API_BASE}/export`, {
-      // The auth interceptor stamps this request with Authorization automatically.
-      credentials: 'same-origin',
-    });
-    if (!response.ok) {
+    const response = await firstValueFrom(
+      this.http.get(`${API_BASE}/export`, {
+        observe: 'response',
+        responseType: 'blob',
+      }),
+    );
+
+    if (!response.ok || !response.body) {
       throw new Error(`Export failed with ${response.status}`);
     }
-    const blob = await response.blob();
+
     const suggested = this.filenameFromDisposition(response.headers.get('Content-Disposition'))
       ?? `tourplanner-export-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
 
-    const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(response.body);
     const a = document.createElement('a');
     a.href = url;
     a.download = suggested;
@@ -224,16 +228,12 @@ export class TourService {
    * newly imported tours show up immediately.
    */
   async importBundle(bundle: unknown): Promise<ImportResult> {
-    const result = await fetch(`${API_BASE}/import`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(bundle),
-    });
-    if (!result.ok) {
-      const bodyText = await result.text().catch(() => '');
-      throw new Error(`Import failed with ${result.status}: ${bodyText || result.statusText}`);
-    }
-    const summary = (await result.json()) as ImportResult;
+    const summary = await firstValueFrom(
+      this.http.post<ImportResult>(`${API_BASE}/import`, bundle, {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
     // Reload so imported tours become visible without a manual refresh.
     this.reload();
     return summary;
