@@ -24,4 +24,13 @@ public interface ITourService
     Task<Tour> UpdateAsync(Guid id, Action<Tour> applyChanges);
 
     Task DeleteAsync(Guid id);
+
+    /// <summary>
+    /// Full-text search across tours and their logs. Empty or whitespace-only
+    /// queries return an empty list without hitting the database.
+    /// </summary>
+    /// <param name="query">Free-text query. Supports web-search syntax (quotes, OR, -negation).</param>
+    /// <param name="limit">Maximum tours to return. Values &lt;= 0 use a sensible default; extreme values are capped by the repository.</param>
+    /// <param name="ct">Cancellation token propagated from the HTTP request.</param>
+    Task<List<TourSearchResult>> SearchAsync(string query, int limit, CancellationToken ct = default);
 }

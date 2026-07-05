@@ -47,4 +47,26 @@ public class TourService : ITourService
         if (!deleted) throw new NotFoundException($"Tour {id} not found.");
         _logger.LogInformation("Deleted tour {TourId}", id);
     }
+
+    public async Task<List<TourSearchResult>> SearchAsync(
+        string query, int limit, CancellationToken ct = default)
+    {
+        // Trim + short-circuit empty queries so the DB doesn't see a pointless
+        // roundtrip. This is also what the API layer relies on when validating.
+        var trimmed = query?.Trim() ?? string.Empty;
+        if (trimmed.Length == 0)
+        {
+            _logger.LogInformation("Search called with empty query — returning empty list");
+            return new List<TourSearchResult>();
+        }
+
+        var hits = await _tours.SearchAsync(trimmed, limit, ct);
+        _logger.LogInformation(
+            "Search returned {Count} hit(s) for query of length {QueryLength}",
+            hits.Count, trimmed.Length);
+
+        return hits
+            .Select(h => new TourSearchResult(h.Tour, h.MatchedInTour, h.MatchedLogs))
+            .ToList();
+    }
 }
