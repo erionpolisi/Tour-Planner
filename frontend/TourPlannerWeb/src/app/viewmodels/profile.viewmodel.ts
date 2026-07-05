@@ -1,4 +1,4 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { UserService } from '../services/user.service';
 import { UserProfile } from '../models/user.model';
 
@@ -8,7 +8,10 @@ export class ProfileViewModel {
 
   readonly profile = this.userService.profile;
   readonly editing = signal(false);
-  readonly editForm = signal<UserProfile>({ name: '', email: '' });
+  readonly editForm = signal<UserProfile>({
+    name: '',
+    email: '',
+  });
 
   startEdit(): void {
     this.editForm.set({ ...this.profile() });
@@ -25,6 +28,9 @@ export class ProfileViewModel {
   }
 
   updateField(field: keyof UserProfile, value: string): void {
-    this.editForm.update((f) => ({ ...f, [field]: value }));
+    this.editForm.update(form => ({
+      ...form,
+      [field]: value,
+    }));
   }
 }

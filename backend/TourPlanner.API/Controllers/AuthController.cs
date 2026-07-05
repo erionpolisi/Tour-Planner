@@ -129,6 +129,25 @@ public class AuthController : ControllerBase
         return Ok(UserMapper.ToDto(user));
     }
 
+    [HttpPut("me")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<UserDto>> UpdateMe(UpdateUserDto dto)
+    {
+        var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+        if (!Guid.TryParse(sub, out var userId))
+            return Unauthorized();
+
+        var user = await _users.UpdateAsync(
+            userId,
+            dto.Name,
+            dto.Email,
+            dto.Password);
+
+        return Ok(UserMapper.ToDto(user));
+    }
+
     private async Task<AuthResponseDto> IssueSessionAsync(TourPlanner.Domain.User user)
     {
         var access = _tokens.CreateAccessToken(user);

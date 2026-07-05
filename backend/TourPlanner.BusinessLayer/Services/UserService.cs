@@ -90,6 +90,43 @@ public class UserService : IUserService
         return user;
     }
 
+    public async Task<User> UpdateAsync(
+        Guid id,
+        string name,
+        string email,
+        string? password)
+    {
+        var user = await _users.GetByIdAsync(id);
+
+        if (user is null)
+            throw new NotFoundException($"User {id} not found.");
+
+        name = name.Trim();
+        email = email.Trim();
+
+        var existing = await _users.GetByEmailAsync(email);
+
+        if (existing is not null && existing.Id != id)
+            throw new ConflictException("A user with this email already exists.");
+
+        user.Name = name;
+        user.Email = email;
+
+        if (!string.IsNullOrWhiteSpace(password))
+        {
+            var policyError = _passwordPolicy.Validate(password, email, name);
+
+            if (policyError is not null)
+                throw new ValidationException(policyError);
+
+            user.PasswordHash = _hasher.HashPassword(user, password);
+        }
+
+        await _users.UpdateAsync(user);
+
+        return user;
+    }
+
     public async Task<User> GetByIdAsync(Guid id) =>
         await _users.GetByIdAsync(id)
             ?? throw new NotFoundException($"User {id} not found.");

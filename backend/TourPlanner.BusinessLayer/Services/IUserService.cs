@@ -16,4 +16,6 @@ public interface IUserService
     Task<User> LoginAsync(string email, string password);
 
     Task<User> GetByIdAsync(Guid id);
+
+    Task<User> UpdateAsync(Guid id, string name, string email, string? password);
 }
