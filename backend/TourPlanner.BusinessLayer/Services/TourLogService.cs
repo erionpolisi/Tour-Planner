@@ -74,6 +74,33 @@ public class TourLogService : ITourLogService
         return entity;
     }
 
+    public async Task<List<TourLog>> SearchAsync(
+        Guid ownerId,
+        string query,
+        int limit,
+        CancellationToken ct = default)
+    {
+        var trimmed = query?.Trim() ?? string.Empty;
+
+        if (trimmed.Length == 0)
+        {
+            _logger.LogInformation(
+                "Log search called with empty query — returning empty list");
+
+            return new List<TourLog>();
+        }
+
+        var logs = await _logs.SearchAsync(ownerId, trimmed, limit, ct);
+
+        _logger.LogInformation(
+            "Log search returned {Count} hit(s) for user {UserId} (query length {QueryLength})",
+            logs.Count,
+            ownerId,
+            trimmed.Length);
+
+        return logs;
+    }
+
     public async Task DeleteAsync(Guid ownerId, Guid id)
     {
         // Load first so we know which tour to recompute after the delete.

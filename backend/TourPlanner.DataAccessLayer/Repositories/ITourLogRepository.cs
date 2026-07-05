@@ -27,6 +27,12 @@ public interface ITourLogRepository
     Task AddAsync(TourLog log);
     Task UpdateAsync(TourLog log);
 
+    Task<List<TourLog>> SearchAsync(
+        Guid ownerId,
+        string query,
+        int limit,
+        CancellationToken ct = default);
+
     /// <summary>Delete the given log — only if the parent tour belongs to <paramref name="ownerId"/>.</summary>
     Task<bool> DeleteAsync(Guid ownerId, Guid id);
 

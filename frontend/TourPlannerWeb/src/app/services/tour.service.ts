@@ -49,6 +49,12 @@ export interface ImportResult {
   errors: { index: number; tourName: string; message: string }[];
 }
 
+interface TourSearchResultDto {
+  tour: TourDto;
+  matchedInTour: boolean;
+  matchedLogs: unknown[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -71,6 +77,27 @@ export class TourService {
     if (statusF !== 'all') tours = tours.filter((t) => t.status === statusF);
     return tours;
   });
+
+  search(query: string): void {
+  const q = query.trim();
+
+  if (!q) {
+    this.reload();
+    return;
+  }
+
+  this.http.get<TourSearchResultDto[]>(`${API_BASE}/search`, {
+    params: {
+      q,
+      limit: 50,
+    },
+  }).subscribe({
+    next: results => {
+      this._tours.set(results.map(r => this.fromDto(r.tour)));
+    },
+    error: err => console.error('Search failed', err),
+  });
+}
 
   readonly stats = computed<Stat[]>(() => {
     const tours = this.filteredByTransport();

@@ -78,6 +78,25 @@ export class TourLogService {
     return (logs.reduce((sum, l) => sum + l.rating, 0) / logs.length).toFixed(1);
   });
 
+  search(query: string): void {
+  const q = query.trim();
+
+  if (!q) {
+    this.reload();
+    return;
+  }
+
+  this.http.get<TourLogDto[]>(`${API_BASE}/search`, {
+    params: {
+      q,
+      limit: 50,
+    },
+  }).subscribe({
+    next: logs => this._logs.set(logs.map(l => this.fromDto(l))),
+    error: err => console.error('Search failed', err),
+  });
+}
+
   constructor() {
     if (!isPlatformBrowser(this.platformId)) return;
     this.reload();

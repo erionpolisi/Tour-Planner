@@ -1,11 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using NpgsqlTypes;
 using TourPlanner.Domain;
 
 namespace TourPlanner.DataAccessLayer.Repositories;
 
 public class TourLogRepository : ITourLogRepository
 {
+    private const int DefaultSearchLimit = 50;
+    private const int MaxSearchLimit = 200;
+
     private readonly TourPlannerDbContext _db;
     private readonly ILogger<TourLogRepository> _logger;
 
@@ -56,6 +60,45 @@ public class TourLogRepository : ITourLogRepository
         _logger.LogInformation("Updating tour log {LogId}", log.Id);
         _db.TourLogs.Update(log);
         await _db.SaveChangesAsync();
+    }
+
+    public async Task<List<TourLog>> SearchAsync(
+        Guid ownerId,
+        string query,
+        int limit,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return new List<TourLog>();
+        }
+
+        var effectiveLimit = limit switch
+        {
+            <= 0 => DefaultSearchLimit,
+            > MaxSearchLimit => MaxSearchLimit,
+            _ => limit,
+        };
+
+        _logger.LogInformation(
+            "Full-text search for logs: user={UserId} len={QueryLength} limit={Limit}",
+            ownerId,
+            query.Length,
+            effectiveLimit);
+
+        return await _db.TourLogs
+            .AsNoTracking()
+            .Include(l => l.Tour)
+            .Where(l =>
+                l.Tour != null &&
+                l.Tour.UserId == ownerId &&
+                EF.Property<NpgsqlTsVector>(
+                        l,
+                        TourPlannerDbContext.SearchVectorColumn)
+                    .Matches(EF.Functions.WebSearchToTsQuery("simple", query)))
+            .OrderByDescending(l => l.LoggedAt)
+            .Take(effectiveLimit)
+            .ToListAsync(ct);
     }
 
     public async Task<bool> DeleteAsync(Guid ownerId, Guid id)

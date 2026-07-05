@@ -1,6 +1,7 @@
-import { Injectable, inject, computed } from '@angular/core';
+import { Injectable, inject, computed, effect } from '@angular/core';
 import { TourLogService } from '../services/tour-log.service';
 import { getDifficultyColor, getRatingStars } from '../models/tour-log.model';
+import { SearchService } from '../services/search.service';
 
 @Injectable()
 export class LogsViewModel {
@@ -14,7 +15,16 @@ export class LogsViewModel {
    * All logs. Full-text search is handled by the backend now; this view-model
    * no longer performs any query filtering.
    */
-  readonly logs = computed(() => this.tourLogService.logs());
+private readonly search = inject(SearchService);
+readonly logs = this.tourLogService.logs;
+
+constructor() {
+  effect(() => {
+    if (this.search.scope() !== 'logs') return;
+
+    this.tourLogService.search(this.search.query());
+  });
+}
 
   deleteLog(id: string): void {
     this.tourLogService.deleteLog(id);

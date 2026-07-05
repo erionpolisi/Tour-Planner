@@ -62,6 +62,22 @@ public class TourLogsController : ControllerBase
         return Ok(TourLogMapper.ToDto(log));
     }
 
+    [HttpGet("search")]
+    [ProducesResponseType(typeof(List<TourLogDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<TourLogDto>>> Search(
+        [FromQuery] string? q,
+        [FromQuery] int limit,
+        CancellationToken ct)
+    {
+        var logs = await _service.SearchAsync(
+            CurrentUserId(),
+            q ?? string.Empty,
+            limit,
+            ct);
+
+        return Ok(logs.Select(TourLogMapper.ToDto).ToList());
+    }
+
     /// <summary>POST /api/logs — create a new log. Returns 201 + Location header.</summary>
     [HttpPost]
     [ProducesResponseType(typeof(TourLogDto), StatusCodes.Status201Created)]

@@ -26,5 +26,11 @@ public interface ITourLogService
     /// <summary>Load the log, apply changes, persist.</summary>
     Task<TourLog> UpdateAsync(Guid ownerId, Guid id, Action<TourLog> applyChanges);
 
+    Task<List<TourLog>> SearchAsync(
+        Guid ownerId,
+        string query,
+        int limit,
+        CancellationToken ct = default);
+
     Task DeleteAsync(Guid ownerId, Guid id);
 }
