@@ -30,18 +30,36 @@ interface UserDto {
   createdAt: string;
 }
 
+/** Full auth response shape returned by /register, /login, and /refresh. */
+interface AuthResponseDto {
+  user: UserDto;
+  accessToken: string;
+  accessTokenExpiresAtUtc: string;
+  refreshToken: string;
+  refreshTokenExpiresAtUtc: string;
+}
+
 const API_BASE = 'http://localhost:5102/api/auth';
-const STORAGE_KEY = 'tourplanner.user';
+
+const STORAGE_KEYS = {
+  user: 'tourplanner.user',
+  access: 'tourplanner.accessToken',
+  accessExp: 'tourplanner.accessTokenExpiresAt', // ISO 8601 UTC string
+  refresh: 'tourplanner.refreshToken',
+  refreshExp: 'tourplanner.refreshTokenExpiresAt',
+} as const;
 
 /**
- * Real auth service backed by the API.
+ * Auth service backed by the API.
  *
- * No JWT yet: on successful login/register we keep the returned profile
- * in a signal + localStorage so the auth-guard works and the user stays
- * signed in across page reloads AND browser restarts (until explicit logout).
+ * On successful login/register/refresh we keep:
+ *   * profile signal (drives the UI, exposed as `currentUser`)
+ *   * JWT access token + expiry (used by the HTTP interceptor)
+ *   * opaque refresh token + expiry (used by the interceptor's 401 recovery)
+ * All of it lives in localStorage so the session survives page reloads.
  *
- * When token-based auth is added later, swap localStorage for a token store
- * and add an HTTP interceptor — the public signal API stays the same.
+ * A single in-flight refresh promise is cached so concurrent 401s coming
+ * back at the same time trigger exactly one `/refresh` roundtrip.
  */
 @Injectable({
   providedIn: 'root',
@@ -52,6 +70,9 @@ export class AuthService {
   private readonly _currentUser = signal<AuthUser | null>(this.restoreUser());
   private readonly _lastError = signal<string | null>(null);
 
+  /** In-flight refresh promise. Shared to coalesce concurrent 401s. */
+  private inflightRefresh: Promise<boolean> | null = null;
+
   readonly currentUser = this._currentUser.asReadonly();
   readonly isAuthenticated = computed(() => this._currentUser() !== null);
   readonly lastError = this._lastError.asReadonly();
@@ -60,9 +81,9 @@ export class AuthService {
     this._lastError.set(null);
     try {
       const dto = await firstValueFrom(
-        this.http.post<UserDto>(`${API_BASE}/login`, credentials),
+        this.http.post<AuthResponseDto>(`${API_BASE}/login`, credentials),
       );
-      this.setUser(this.fromDto(dto));
+      this.acceptSession(dto);
       return true;
     } catch (err) {
       this._lastError.set(this.errorMessage(err, 'Login failed.'));
@@ -74,9 +95,9 @@ export class AuthService {
     this._lastError.set(null);
     try {
       const dto = await firstValueFrom(
-        this.http.post<UserDto>(`${API_BASE}/register`, credentials),
+        this.http.post<AuthResponseDto>(`${API_BASE}/register`, credentials),
       );
-      this.setUser(this.fromDto(dto));
+      this.acceptSession(dto);
       return true;
     } catch (err) {
       this._lastError.set(this.errorMessage(err, 'Registration failed.'));
@@ -84,18 +105,112 @@ export class AuthService {
     }
   }
 
-  logout(): void {
+  /**
+   * Full logout: tells the server to revoke the current refresh token, then
+   * wipes local state. Safe to call when already logged out (no-op).
+   */
+  async logout(): Promise<void> {
+    const refreshToken = this.getRefreshToken();
+    // Fire-and-forget: even if the server never hears from us, we still want
+    // to wipe local state and land the user on the auth page.
+    if (refreshToken) {
+      try {
+        await firstValueFrom(
+          this.http.post(`${API_BASE}/logout`, { refreshToken }),
+        );
+      } catch {
+        /* server unreachable → local logout still proceeds */
+      }
+    }
+    this.logoutLocal();
+  }
+
+  /**
+   * Clear all client-side auth state without calling the server. Used by
+   * the HTTP interceptor when a refresh attempt fails.
+   */
+  logoutLocal(): void {
     this._currentUser.set(null);
+    this.inflightRefresh = null;
     this.clearStorage();
   }
 
-  private setUser(user: AuthUser): void {
-    this._currentUser.set(user);
-    this.persistUser(user);
+  // ---------------------------------------------------------------
+  //  Interceptor API
+  // ---------------------------------------------------------------
+
+  /** Returns the JWT access token, or null when unauthenticated. */
+  getAccessToken(): string | null {
+    return this.readItem(STORAGE_KEYS.access);
   }
 
-  private fromDto(dto: UserDto): AuthUser {
-    return { id: dto.id, name: dto.name, email: dto.email, avatar: dto.avatar };
+  /** Whether the interceptor still has a refresh token to try. */
+  hasRefreshToken(): boolean {
+    return this.getRefreshToken() !== null;
+  }
+
+  private getRefreshToken(): string | null {
+    return this.readItem(STORAGE_KEYS.refresh);
+  }
+
+  /**
+   * True when the access token exists and expires within `withinSeconds`.
+   * Used by the interceptor to refresh proactively.
+   */
+  isAccessTokenExpiringSoon(withinSeconds: number): boolean {
+    const expIso = this.readItem(STORAGE_KEYS.accessExp);
+    if (!expIso) return false;
+    const expiresAt = Date.parse(expIso);
+    if (Number.isNaN(expiresAt)) return false;
+    return expiresAt - Date.now() < withinSeconds * 1000;
+  }
+
+  /**
+   * Ask the server for a fresh token pair. Idempotent under concurrency:
+   * simultaneous callers all await the same in-flight promise.
+   */
+  async tryRefresh(): Promise<boolean> {
+    if (this.inflightRefresh) return this.inflightRefresh;
+
+    const refreshToken = this.getRefreshToken();
+    if (!refreshToken) return false;
+
+    this.inflightRefresh = firstValueFrom(
+      this.http.post<AuthResponseDto>(`${API_BASE}/refresh`, { refreshToken }),
+    )
+      .then((dto) => {
+        this.acceptSession(dto);
+        return true;
+      })
+      .catch(() => {
+        // Refresh failed → clear tokens so we don't loop.
+        this.logoutLocal();
+        return false;
+      })
+      .finally(() => {
+        this.inflightRefresh = null;
+      });
+
+    return this.inflightRefresh;
+  }
+
+  // ---------------------------------------------------------------
+  //  Internal helpers
+  // ---------------------------------------------------------------
+
+  private acceptSession(dto: AuthResponseDto): void {
+    const user: AuthUser = {
+      id: dto.user.id,
+      name: dto.user.name,
+      email: dto.user.email,
+      avatar: dto.user.avatar,
+    };
+    this._currentUser.set(user);
+    this.writeItem(STORAGE_KEYS.user, JSON.stringify(user));
+    this.writeItem(STORAGE_KEYS.access, dto.accessToken);
+    this.writeItem(STORAGE_KEYS.accessExp, dto.accessTokenExpiresAtUtc);
+    this.writeItem(STORAGE_KEYS.refresh, dto.refreshToken);
+    this.writeItem(STORAGE_KEYS.refreshExp, dto.refreshTokenExpiresAtUtc);
   }
 
   private errorMessage(err: unknown, fallback: string): string {
@@ -118,27 +233,38 @@ export class AuthService {
 
       if (typeof body === 'string' && body.length) return body;
       if (err.status === 0) return 'Cannot reach the server. Is the API running?';
+      if (err.status === 429) return 'Too many attempts. Please wait a minute and try again.';
     }
     return fallback;
   }
 
   // --- Persistence (localStorage, SSR-safe) ---
-  // localStorage survives browser restarts → user stays logged in until logout.
+  // localStorage survives browser restarts → user stays logged in until logout
+  // or until the refresh token expires (7 days) or is revoked server-side.
 
   private restoreUser(): AuthUser | null {
-    if (typeof localStorage === 'undefined') return null;
+    const raw = this.readItem(STORAGE_KEYS.user);
+    if (!raw) return null;
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as AuthUser) : null;
+      return JSON.parse(raw) as AuthUser;
     } catch {
       return null;
     }
   }
 
-  private persistUser(user: AuthUser): void {
+  private readItem(key: string): string | null {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+
+  private writeItem(key: string, value: string): void {
     if (typeof localStorage === 'undefined') return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+      localStorage.setItem(key, value);
     } catch {
       // localStorage might be disabled — fall back to in-memory only.
     }
@@ -147,7 +273,9 @@ export class AuthService {
   private clearStorage(): void {
     if (typeof localStorage === 'undefined') return;
     try {
-      localStorage.removeItem(STORAGE_KEY);
+      for (const k of Object.values(STORAGE_KEYS)) {
+        localStorage.removeItem(k);
+      }
     } catch {
       /* ignore */
     }

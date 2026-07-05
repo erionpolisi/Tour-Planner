@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using TourPlanner.BusinessLayer.Exceptions;
+using TourPlanner.BusinessLayer.Services.Auth;
 using TourPlanner.DataAccessLayer.Repositories;
 using TourPlanner.Domain;
 
@@ -10,20 +11,32 @@ public class UserService : IUserService
 {
     private readonly IUserRepository _users;
     private readonly IPasswordHasher<User> _hasher;
+    private readonly IPasswordPolicy _passwordPolicy;
     private readonly ILogger<UserService> _logger;
 
     public UserService(
         IUserRepository users,
         IPasswordHasher<User> hasher,
+        IPasswordPolicy passwordPolicy,
         ILogger<UserService> logger)
     {
         _users = users;
         _hasher = hasher;
+        _passwordPolicy = passwordPolicy;
         _logger = logger;
     }
 
     public async Task<User> RegisterAsync(string name, string email, string password)
     {
+        // NIST SP 800-63B: check the password against a common-passwords list
+        // *before* creating the account, so we don't leak whether the email exists.
+        var policyError = _passwordPolicy.Validate(password, email: email, name: name);
+        if (policyError is not null)
+        {
+            _logger.LogWarning("Registration rejected by password policy");
+            throw new ValidationException(policyError);
+        }
+
         var existing = await _users.GetByEmailAsync(email);
         if (existing is not null)
         {

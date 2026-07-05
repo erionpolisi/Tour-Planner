@@ -13,6 +13,7 @@ public class TourPlannerDbContext : DbContext
     public DbSet<Tour> Tours => Set<Tour>();
     public DbSet<TourLog> TourLogs => Set<TourLog>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -35,5 +36,15 @@ public class TourPlannerDbContext : DbContext
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Email)
             .IsUnique();
+
+        // Refresh tokens: unique hash + fast lookup by user
+        modelBuilder.Entity<RefreshToken>(b =>
+        {
+            b.HasIndex(t => t.TokenHash).IsUnique();
+            b.HasIndex(t => t.UserId);
+            b.Property(t => t.TokenHash).HasMaxLength(64); // sha256 hex = 64 chars
+            b.Property(t => t.ReplacedByHash).HasMaxLength(64);
+            b.Property(t => t.CreatedByIp).HasMaxLength(64);
+        });
     }
 }

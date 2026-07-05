@@ -32,7 +32,8 @@ export class NavbarComponent {
   }
 
   logout(): void {
-    this.authService.logout();
+    // Fire-and-forget: navigate immediately, the server-side revoke resolves in the background.
+    void this.authService.logout();
     void this.router.navigate(['/auth']);
   }
 }
