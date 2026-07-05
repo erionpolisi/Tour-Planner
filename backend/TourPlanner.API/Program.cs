@@ -1,13 +1,31 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 using TourPlanner.API.Middleware;
 using TourPlanner.BusinessLayer.Services;
 using TourPlanner.DataAccessLayer;
+using TourPlanner.DataAccessLayer.Interceptors;
 using TourPlanner.DataAccessLayer.Repositories;
 using TourPlanner.Domain;
 
+// --- Serilog bootstrap logger -------------------------------------------------
+// A minimal logger for startup errors before the host is built. Replaced below
+// with the fully-configured pipeline read from appsettings.json.
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
+
+try
+{
+
 var builder = WebApplication.CreateBuilder(args);
+
+// Route all Microsoft.Extensions.Logging output through Serilog.
+builder.Host.UseSerilog((ctx, services, cfg) => cfg
+    .ReadFrom.Configuration(ctx.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext());
 
 // --- Controllers + JSON config -----------------------------------------------
 // Serialize enums (if any escape from DTOs) as strings, not ints.
@@ -28,7 +46,11 @@ string connectionString = builder.Configuration.GetConnectionString("DefaultConn
     ?? throw new InvalidOperationException(
         "ConnectionString 'DefaultConnection' is missing. Set it via User Secrets or appsettings.");
 
-builder.Services.AddDbContext<TourPlannerDbContext>(opt => opt.UseNpgsql(connectionString));
+// The audit interceptor logs every INSERT / UPDATE / DELETE that flows through EF.
+builder.Services.AddSingleton<AuditSaveChangesInterceptor>();
+builder.Services.AddDbContext<TourPlannerDbContext>((sp, opt) => opt
+    .UseNpgsql(connectionString)
+    .AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>()));
 
 // --- Dependency Injection: repositories, services, auth helpers --------------
 builder.Services.AddScoped<ITourRepository, TourRepository>();
@@ -54,6 +76,12 @@ builder.Services.AddCors(opt =>
 var app = builder.Build();
 
 // --- Middleware pipeline -----------------------------------------------------
+// Request logging is the OUTERMOST middleware so it captures the final response
+// status (after ExceptionHandlingMiddleware has translated e.g. NotFoundException
+// into a proper 404).
+app.UseSerilogRequestLogging();
+
+// Translates business-layer exceptions to clean HTTP responses.
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
@@ -67,4 +95,14 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+}
+catch (Exception ex) when (ex is not HostAbortedException)
+{
+    Log.Fatal(ex, "Host terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
