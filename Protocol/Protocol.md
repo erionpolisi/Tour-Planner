@@ -39,7 +39,7 @@ Two example files are included to show the required secret structure:
 - `backend/.env.example`
 - `backend/secrets.json.example`
 
-`backend/.env.example` is used by Docker Compose for PostgreSQL:
+`backend/.env` configered like in `backend/Secrets/.env.example` is used by Docker Compose for PostgreSQL:
 
 ```env
 POSTGRES_DB=tourplanner
@@ -47,7 +47,7 @@ POSTGRES_USER=tourplanner
 POSTGRES_PASSWORD=...
 ```
 
-`backend/secrets.json.example` shows the secret keys expected by the API:
+`backend/Secrets/secrets.json.example` shows the secret keys expected by the API:
 
 ```json
 {
@@ -362,19 +362,19 @@ Exact personal hours were not reconstructible from code alone, so this is an est
 
 ### 8.1 Estimated project effort
 
-- project bootstrap and repository setup: 4 h
-- Angular MVVM shell and base layout: 8 h
-- tour management UI and CRUD: 10 h
-- log management UI and CRUD: 8 h
-- map integration with Leaflet and routing/geocoding: 10 h
-- backend architecture, DAL/BL, EF migrations: 12 h
-- auth, JWT, refresh tokens, security improvements: 8 h
-- search, computed stats, user scoping: 8 h
-- import/export: 5 h
-- unique feature dashboard and tests: 4 h
-- debugging, polishing, documentation: 7 h
+- project bootstrap and repository setup: 5 h
+- Angular MVVM shell and base layout: 9 h
+- tour management UI and CRUD: 11 h
+- log management UI and CRUD: 9 h
+- map integration with Leaflet and routing/geocoding: 11 h
+- backend architecture, DAL/BL, EF migrations: 13 h
+- auth, JWT, refresh tokens, security improvements: 9 h
+- search, computed stats, user scoping: 9 h
+- import/export: 6 h
+- unique feature dashboard and tests: 5 h
+- debugging, polishing, documentation: 8 h
 
-Estimated total project effort: 84 h
+Estimated total project effort: 95 h
 
 ### 8.2 Git milestone reference
 
@@ -393,235 +393,52 @@ The assignment explicitly says the git history is part of the documentation, so 
 
 ## 9. UML Use Case Diagram
 
-The following PlantUML can be pasted into a renderer and exported as an image for the final PDF.
-
-```plantuml
-@startuml
-left to right direction
-actor User
-
-rectangle "Tour Planner" {
-  usecase "Register" as UC_Register
-  usecase "Login" as UC_Login
-  usecase "Manage Profile" as UC_Profile
-  usecase "Create/Edit/Delete Tour" as UC_Tour
-  usecase "Create/Edit/Delete Tour Log" as UC_Log
-  usecase "Search Tours / Logs" as UC_Search
-  usecase "Calculate Route" as UC_Route
-  usecase "View Map" as UC_Map
-  usecase "Import Data" as UC_Import
-  usecase "Export Data" as UC_Export
-  usecase "View Statistics Dashboard" as UC_Dashboard
-}
-
-User --> UC_Register
-User --> UC_Login
-User --> UC_Profile
-User --> UC_Tour
-User --> UC_Log
-User --> UC_Search
-User --> UC_Route
-User --> UC_Map
-User --> UC_Import
-User --> UC_Export
-User --> UC_Dashboard
-
-UC_Tour --> UC_Route : <<include>>
-UC_Tour --> UC_Map : <<include>>
-@enduml
-```
+![alt text](image.png)
 
 ---
 
 ## 10. Wireframes / UI Flow
 
-These are plaintext wireframes for documentation. For the final PDF they can be redrawn in Figma if needed.
+Figma-Link: https://www.figma.com/make/vzG9usKZBdfjT5VZbO7QFL/Tour-List-Dashboard-Wireframe?p=f&t=oR58N5M8hZSy0DCw-0
+
+Initial Design:
+![alt text](image-5.png)
 
 ### 10.1 Auth flow
 
-```text
-+------------------------------------------------------+
-| Tour Planner                                         |
-|------------------------------------------------------|
-| [ Login ] [ Register ]                               |
-|                                                      |
-| Name (register only)                                 |
-| Email                                                |
-| Password                                             |
-|                                                      |
-| [ Submit ]                                           |
-| Error / validation text                              |
-+------------------------------------------------------+
-```
+![alt text](image-6.png)
+
+![alt text](image-10.png)
+
 
 ### 10.2 Main app layout
 
-```text
-+----------------+-------------------------------------+
-| Sidebar        | Navbar                              |
-| - Dashboard    | Search bar                          |
-| - Tours        | Profile / Logout                    |
-| - Logs         |                                     |
-|----------------+-------------------------------------|
-| Sidebar stats  | Active page content                 |
-| cards          |                                     |
-+----------------+-------------------------------------+
-```
+![alt text](image-7.png)
 
 ### 10.3 Tours flow
 
-```text
-+------------------------------------------------------+
-| Header: Your Tours                                   |
-| [Import] [Export] [Create Tour]                      |
-| Filters: Transport / Status                          |
-|------------------------------------------------------|
-| Tour Card | Tour Card | Tour Card                    |
-| Tour Card | Tour Card | ...                          |
-|                                                      |
-| Click card -> Tour detail modal                      |
-| Click create -> Create tour modal                    |
-+------------------------------------------------------+
-```
+![alt text](image-8.png)
 
-### 10.4 Dashboard flow (unique feature)
+![alt text](image-9.png)
 
-```text
-+------------------------------------------------------+
-| Statistics Dashboard                                 |
-|------------------------------------------------------|
-| Tours tracked | Logs analyzed | Avg km/month | Rate  |
-|------------------------------------------------------|
-| Distance per month chart | Rating distribution       |
-|------------------------------------------------------|
-| Top tour card          | Transport mix               |
-+------------------------------------------------------+
-```
+### 10.4 Logs flow 
+
+![alt text](image-11.png)
+
 
 ---
 
 ## 11. UML Class Diagram
 
-This is a simplified architectural class diagram, not a line-by-line entity dump.
-
-```plantuml
-@startuml
-skinparam classAttributeIconSize 0
-
-package "Frontend" {
-  class DashboardComponent
-  class DashboardViewModel
-  class TourService_Frontend
-  class TourLogService_Frontend
-  class SearchService
-}
-
-package "API Layer" {
-  class ToursController
-  class TourLogsController
-  class AuthController
-  class RoutingController
-  class ExceptionHandlingMiddleware
-}
-
-package "Business Layer" {
-  interface ITourService
-  interface ITourLogService
-  interface IUserService
-  class TourService
-  class TourLogService
-  class UserService
-  class AuthSessionService
-  class JwtTokenService
-  class RoutingService
-  class TourImportExportService
-  class TourStatsCalculator
-}
-
-package "Data Access Layer" {
-  class TourPlannerDbContext
-  interface ITourRepository
-  interface ITourLogRepository
-  interface IUserRepository
-  interface IRefreshTokenRepository
-  class TourRepository
-  class TourLogRepository
-  class UserRepository
-  class RefreshTokenRepository
-}
-
-package "Domain" {
-  class Tour
-  class TourLog
-  class User
-  class RefreshToken
-}
-
-DashboardComponent --> DashboardViewModel
-DashboardViewModel --> TourService_Frontend
-DashboardViewModel --> TourLogService_Frontend
-SearchService --> TourService_Frontend
-
-ToursController --> ITourService
-TourLogsController --> ITourLogService
-AuthController --> IUserService
-AuthController --> AuthSessionService
-RoutingController --> RoutingService
-
-TourService ..|> ITourService
-TourLogService ..|> ITourLogService
-UserService ..|> IUserService
-
-TourService --> ITourRepository
-TourLogService --> ITourLogRepository
-TourLogService --> ITourRepository
-UserService --> IUserRepository
-AuthSessionService --> IRefreshTokenRepository
-TourImportExportService --> ITourRepository
-
-TourRepository --> TourPlannerDbContext
-TourLogRepository --> TourPlannerDbContext
-UserRepository --> TourPlannerDbContext
-RefreshTokenRepository --> TourPlannerDbContext
-
-TourPlannerDbContext --> Tour
-TourPlannerDbContext --> TourLog
-TourPlannerDbContext --> User
-TourPlannerDbContext --> RefreshToken
-@enduml
-```
+![alt text](image-2.png)
 
 ---
 
 ## 12. UML Sequence Diagram For Full-Text Search
 
-The implemented backend search path is shown below.
+![alt text](image-3.png)
 
-```plantuml
-@startuml
-actor User
-participant Navbar
-participant SearchService
-participant ToursController
-participant TourService
-participant TourRepository
-database PostgreSQL
-
-User -> Navbar : type search text
-Navbar -> SearchService : search(query)
-SearchService -> ToursController : GET /api/tours/search?q=...&limit=...
-ToursController -> TourService : SearchAsync(ownerId, query, limit)
-TourService -> TourService : trim + reject empty query
-TourService -> TourRepository : SearchAsync(ownerId, query, limit)
-TourRepository -> PostgreSQL : tsvector @@ websearch_to_tsquery
-PostgreSQL --> TourRepository : matching tours + matching logs
-TourRepository --> TourService : TourSearchHit[]
-TourService --> ToursController : TourSearchResult[]
-ToursController --> SearchService : JSON DTO response
-SearchService --> Navbar : updated result state
-Navbar --> User : filtered results / hit count
-@enduml
-```
+![alt text](image-12.png)
 
 ---
 
