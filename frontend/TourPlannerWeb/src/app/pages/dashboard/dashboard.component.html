@@ -1,84 +1,196 @@
-<main class="flex-1 p-4 md:p-8 overflow-y-auto min-h-0">
-  <!-- Header -->
-  <div class="mb-8">
-    <h2 class="text-3xl font-bold text-white mb-1">Dashboard</h2>
-    <p class="text-gray-400">Overview of your tours and activity</p>
+<main class="flex-1 min-h-0 overflow-y-auto p-4 md:p-8">
+  <div class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+      <p class="mb-2 text-xs font-semibold uppercase tracking-[0.35em] text-cyan-300/80">Unique Feature</p>
+      <h2 class="text-3xl font-bold text-white md:text-4xl">Statistics Dashboard</h2>
+      <p class="mt-2 max-w-2xl text-sm text-slate-300">
+        Frontend-only analytics built from your existing tours and logs: average kilometres per month,
+        rating distribution, top tour, and transport mix.
+      </p>
+    </div>
+
+    <div class="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+      No extra API endpoint required
+    </div>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- Planned Tours -->
-    <div class="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-      <div class="flex items-center justify-between mb-5">
-        <h3 class="text-lg font-bold text-white">Planned Tours</h3>
-        <a routerLink="/tours" class="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors">
-          View all
-          <lucide-icon [img]="icons.ArrowRight" class="w-4 h-4"></lucide-icon>
-        </a>
-      </div>
-      <div class="space-y-3">
-        @for (tour of vm.plannedTours(); track tour.id) {
-          <div (click)="onTourClick(tour)" class="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center justify-between cursor-pointer">
-            <div class="flex items-center gap-4">
-              <div class="w-10 h-10 rounded-lg bg-gradient-to-br flex items-center justify-center"
-                   [class]="tour.color">
-                <lucide-icon [img]="icons.Map" class="w-5 h-5 text-white"></lucide-icon>
-              </div>
-              <div>
-                <div class="text-white font-semibold">{{ tour.name }}</div>
-                <div class="flex items-center gap-1 text-sm text-gray-400">
-                  <lucide-icon [img]="icons.MapPin" class="w-3 h-3"></lucide-icon>
-                  {{ tour.from }} → {{ tour.to }}
-                </div>
-              </div>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="text-xs text-gray-500">est. {{ formatDuration(tour.duration) }}</span>
-              <div class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-500/30">
-                <lucide-icon [img]="icons.CalendarClock" class="w-4 h-4 text-amber-400"></lucide-icon>
-                <span class="text-sm font-semibold text-amber-400">Planned</span>
-              </div>
-            </div>
+  <div class="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    @for (card of vm.summaryCards(); track card.label) {
+      <section class="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
+        <div class="mb-4 flex items-center gap-3">
+          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br" [class]="card.color">
+            <lucide-icon [img]="icons.Activity" class="h-5 w-5 text-white"></lucide-icon>
           </div>
-        }
-        @if (vm.plannedTours().length === 0) {
-          <div class="text-center py-8 text-gray-500 text-sm">No planned tours</div>
-        }
-      </div>
-    </div>
+          <div class="text-xs uppercase tracking-[0.22em] text-slate-400">{{ card.label }}</div>
+        </div>
+        <div class="text-3xl font-bold text-white">{{ card.value }}</div>
+        <div class="mt-2 text-sm text-slate-400">{{ card.detail }}</div>
+      </section>
+    }
+  </div>
 
-    <!-- Recent Tour Logs -->
-    <div class="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-      <div class="flex items-center justify-between mb-5">
-        <h3 class="text-lg font-bold text-white">Recent Tour Logs</h3>
-        <a routerLink="/logs" class="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors">
-          View all
-          <lucide-icon [img]="icons.ArrowRight" class="w-4 h-4"></lucide-icon>
-        </a>
+  <div class="mb-6 grid gap-6 xl:grid-cols-[1.25fr,0.95fr]">
+    <section class="rounded-[2rem] border border-white/10 bg-slate-950/60 p-6 shadow-2xl shadow-slate-950/30">
+      <div class="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <div class="mb-2 flex items-center gap-2 text-sm font-semibold text-cyan-300">
+            <lucide-icon [img]="icons.CalendarRange" class="h-4 w-4"></lucide-icon>
+            Distance Per Month
+          </div>
+          <h3 class="text-2xl font-bold text-white">{{ vm.stats().averageKmPerMonthLabel }}</h3>
+          <p class="mt-1 text-sm text-slate-400">
+            Average distance across {{ vm.stats().activeMonthsLabel.toLowerCase() }} based on completed logs.
+          </p>
+        </div>
+
+        <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-right">
+          <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Window</div>
+          <div class="mt-1 text-lg font-semibold text-white">Last 6 months</div>
+        </div>
       </div>
-      <div class="space-y-3">
-        @for (log of vm.recentLogs(); track log.id) {
-          <div (click)="onLogClick(log)" class="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all cursor-pointer">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-white font-semibold text-sm">{{ log.tourName }}</span>
-              <span class="text-xs text-gray-500">{{ log.dateTime }}</span>
+
+      <div class="grid min-h-72 grid-cols-6 gap-3">
+        @for (point of vm.monthlyDistance(); track point.label) {
+          <div class="flex flex-col justify-end gap-3">
+            <div class="flex h-52 items-end justify-center rounded-3xl border border-white/10 bg-white/[0.04] px-2 py-3">
+              <div
+                class="w-full rounded-2xl bg-gradient-to-t from-cyan-400 via-sky-500 to-blue-500 shadow-lg shadow-cyan-500/20"
+                [style.height.%]="point.height"
+              ></div>
             </div>
-            <p class="text-sm text-gray-400 mb-2 line-clamp-1">{{ log.comment }}</p>
-            <div class="flex items-center gap-3">
-              <span class="text-xs px-2 py-0.5 rounded-md border" [class]="vm.getDifficultyColor(log.difficulty)">
-                {{ log.difficulty }}
-              </span>
-              <span class="text-xs text-gray-500 flex items-center gap-1">
-                <lucide-icon [img]="icons.TrendingUp" class="w-3 h-3"></lucide-icon>
-                {{ log.totalDistance }} km
-              </span>
-              <span class="text-xs text-gray-500 flex items-center gap-1">
-                <lucide-icon [img]="icons.Clock" class="w-3 h-3"></lucide-icon>
-                {{ log.duration }}
-              </span>
+            <div class="text-center">
+              <div class="text-sm font-semibold text-white">{{ point.shortLabel }}</div>
+              <div class="text-xs text-slate-400">{{ point.totalKmLabel }}</div>
             </div>
           </div>
         }
       </div>
-    </div>
+    </section>
+
+    <section class="rounded-[2rem] border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+      <div class="mb-6 flex items-center gap-2 text-sm font-semibold text-amber-300">
+        <lucide-icon [img]="icons.Star" class="h-4 w-4"></lucide-icon>
+        Rating Distribution
+      </div>
+
+      <div class="space-y-4">
+        @for (bucket of vm.ratingDistribution(); track bucket.rating) {
+          <div class="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+            <div class="mb-3 flex items-center justify-between gap-4">
+              <div class="text-sm font-semibold text-white">{{ bucket.label }}</div>
+              <div class="text-xs text-slate-400">{{ bucket.countLabel }}</div>
+            </div>
+            <div class="h-3 overflow-hidden rounded-full bg-white/10">
+              <div
+                class="h-full rounded-full bg-gradient-to-r from-amber-300 via-orange-400 to-rose-400"
+                [style.width.%]="bucket.width"
+              ></div>
+            </div>
+            <div class="mt-3 text-right text-xs text-slate-400">{{ bucket.shareLabel }}</div>
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+
+  <div class="grid gap-6 xl:grid-cols-[1.05fr,1.15fr]">
+    <section class="rounded-[2rem] border border-white/10 bg-gradient-to-br from-fuchsia-500/10 via-white/5 to-cyan-400/10 p-6">
+      <div class="mb-6 flex items-center gap-2 text-sm font-semibold text-fuchsia-300">
+        <lucide-icon [img]="icons.Trophy" class="h-4 w-4"></lucide-icon>
+        Top Tour
+      </div>
+
+      @if (vm.topTour(); as topTour) {
+        <button
+          type="button"
+          (click)="onTourClick(topTour.tour)"
+          class="w-full rounded-[1.75rem] border border-white/10 bg-slate-950/50 p-5 text-left transition hover:bg-slate-950/70"
+        >
+          <div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div class="mb-2 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                <lucide-icon [img]="icons.Route" class="h-3.5 w-3.5"></lucide-icon>
+                Highest Rated
+              </div>
+              <h3 class="text-2xl font-bold text-white">{{ topTour.tour.name }}</h3>
+              <p class="mt-2 text-sm text-slate-300">{{ topTour.tour.from }} to {{ topTour.tour.to }}</p>
+            </div>
+
+            <div class="rounded-2xl border border-amber-300/20 bg-amber-300/10 px-4 py-3 text-right">
+              <div class="text-xs uppercase tracking-[0.18em] text-amber-100/80">Average rating</div>
+              <div class="mt-1 text-xl font-bold text-white">{{ topTour.averageRatingLabel }}</div>
+            </div>
+          </div>
+
+          <div class="grid gap-3 md:grid-cols-3">
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div class="text-xs uppercase tracking-[0.18em] text-slate-400">Logs</div>
+              <div class="mt-2 text-xl font-semibold text-white">{{ topTour.logCount }}</div>
+              <div class="mt-1 text-xs text-slate-400">{{ topTour.logCountLabel }}</div>
+            </div>
+
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div class="text-xs uppercase tracking-[0.18em] text-slate-400">Completed distance</div>
+              <div class="mt-2 text-xl font-semibold text-white">{{ topTour.completedKmLabel }}</div>
+              <div class="mt-1 text-xs text-slate-400">Across all recorded logs</div>
+            </div>
+
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div class="text-xs uppercase tracking-[0.18em] text-slate-400">Transport</div>
+              <div class="mt-2 text-xl font-semibold capitalize text-white">{{ topTour.tour.transportType }}</div>
+              <div class="mt-1 text-xs text-slate-400">{{ topTour.tour.distance }} km planned route</div>
+            </div>
+          </div>
+
+          <div class="mt-5 flex items-center justify-between text-sm text-slate-300">
+            <span>Open the tour details to inspect the route and logs.</span>
+            <span class="font-semibold text-fuchsia-200">View tour</span>
+          </div>
+        </button>
+      } @else {
+        <div class="rounded-[1.75rem] border border-dashed border-white/15 bg-slate-950/40 p-8 text-center">
+          <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5">
+            <lucide-icon [img]="icons.Map" class="h-6 w-6 text-slate-300"></lucide-icon>
+          </div>
+          <h3 class="text-xl font-semibold text-white">No top tour yet</h3>
+          <p class="mt-2 text-sm text-slate-400">
+            Add rated tour logs first, then this card will highlight your best performing route.
+          </p>
+        </div>
+      }
+    </section>
+
+    <section class="rounded-[2rem] border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+      <div class="mb-6 flex items-center gap-2 text-sm font-semibold text-emerald-300">
+        <lucide-icon [img]="icons.BarChart3" class="h-4 w-4"></lucide-icon>
+        Transport Mix
+      </div>
+
+      <div class="space-y-4">
+        @for (item of vm.transportMix(); track item.type) {
+          <div class="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+            <div class="mb-3 flex items-center justify-between gap-4">
+              <div class="flex items-center gap-3">
+                <div class="h-3 w-3 rounded-full" [class]="item.color"></div>
+                <div class="text-sm font-semibold text-white">{{ item.label }}</div>
+              </div>
+              <div class="text-xs text-slate-400">{{ item.shareLabel }}</div>
+            </div>
+
+            <div class="h-3 overflow-hidden rounded-full bg-white/10">
+              <div class="h-full rounded-full" [class]="item.color" [style.width.%]="item.width"></div>
+            </div>
+
+            <div class="mt-3 text-xs text-slate-400">{{ item.countLabel }}</div>
+          </div>
+        }
+      </div>
+
+      @if (!vm.hasTours()) {
+        <div class="mt-5 rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-4 text-sm text-slate-400">
+          Create at least one tour to populate the transport mix.
+        </div>
+      }
+    </section>
   </div>
 </main>

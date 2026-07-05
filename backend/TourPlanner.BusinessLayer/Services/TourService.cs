@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using TourPlanner.BusinessLayer.Exceptions;
 using TourPlanner.BusinessLayer.Services.Stats;
+using TourPlanner.BusinessLayer.Services.Statistics;
 using TourPlanner.DataAccessLayer.Repositories;
 using TourPlanner.Domain;
 
@@ -79,5 +80,11 @@ public class TourService : ITourService
         return hits
             .Select(h => new TourSearchResult(h.Tour, h.MatchedInTour, h.MatchedLogs))
             .ToList();
+    }
+
+    public async Task<TourStatistics> GetStatisticsAsync(Guid ownerId, CancellationToken ct = default)
+    {
+        var tours = await _tours.GetAllWithLogsAsync(ownerId, ct);
+        return TourStatisticsCalculator.Compute(tours);
     }
 }

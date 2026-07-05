@@ -1,4 +1,5 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { TourLog, Difficulty } from '../models/tour-log.model';
 
@@ -49,6 +50,7 @@ const API_BASE = 'http://localhost:5102/api/logs';
 })
 export class TourLogService {
   private readonly http = inject(HttpClient);
+  private readonly platformId = inject(PLATFORM_ID);
 
   private readonly _logs = signal<TourLog[]>([]);
 
@@ -77,6 +79,7 @@ export class TourLogService {
   });
 
   constructor() {
+    if (!isPlatformBrowser(this.platformId)) return;
     this.reload();
   }
 
