@@ -1,16 +1,22 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using System.IdentityModel.Tokens.Jwt;
 using TourPlanner.API.Dtos.Users;
 using TourPlanner.API.Mappers;
+using TourPlanner.BusinessLayer.Exceptions;
 using TourPlanner.BusinessLayer.Services;
+using TourPlanner.BusinessLayer.Services.Auth;
 
 namespace TourPlanner.API.Controllers;
 
 /// <summary>
-/// Auth endpoints — register & login.
-/// Returns a <see cref="UserDto"/> on success; the password hash is never exposed.
+/// Auth endpoints — register, login, refresh, logout, and /me.
 ///
-/// NOTE: No real session/JWT yet. The frontend stores the user in memory after
-/// login and the auth-guard reads that. Real tokens will replace this later.
+/// Returns an <see cref="AuthResponseDto"/> on register/login/refresh:
+/// short-lived JWT access token + long-lived refresh token for the session.
+/// The password hash is never exposed.
 /// </summary>
 [ApiController]
 [Route("api/auth")]
@@ -18,45 +24,122 @@ namespace TourPlanner.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IUserService _users;
+    private readonly IAuthSessionService _sessions;
+    private readonly IJwtTokenService _tokens;
     private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IUserService users, ILogger<AuthController> logger)
+    public AuthController(
+        IUserService users,
+        IAuthSessionService sessions,
+        IJwtTokenService tokens,
+        ILogger<AuthController> logger)
     {
         _users = users;
+        _sessions = sessions;
+        _tokens = tokens;
         _logger = logger;
     }
 
-    /// <summary>POST /api/auth/register — create a new account.</summary>
+    /// <summary>POST /api/auth/register — create a new account and start a session.</summary>
+    [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     [HttpPost("register")]
-    [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<UserDto>> Register([FromBody] RegisterDto dto)
+    public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterDto dto)
     {
         var user = await _users.RegisterAsync(dto.Name, dto.Email, dto.Password);
-        _logger.LogInformation("User registered: {UserId} ({Email})", user.Id, user.Email);
-        return CreatedAtAction(nameof(GetMe), new { id = user.Id }, UserMapper.ToDto(user));
+        _logger.LogInformation("User registered: {UserId}", user.Id);
+
+        var response = await IssueSessionAsync(user);
+        return CreatedAtAction(nameof(Me), routeValues: null, value: response);
     }
 
-    /// <summary>POST /api/auth/login — verify credentials, return profile.</summary>
+    /// <summary>POST /api/auth/login — verify credentials, start a session.</summary>
+    [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     [HttpPost("login")]
-    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<UserDto>> Login([FromBody] LoginDto dto)
+    public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginDto dto)
     {
         var user = await _users.LoginAsync(dto.Email, dto.Password);
         _logger.LogInformation("User logged in: {UserId}", user.Id);
+
+        var response = await IssueSessionAsync(user);
+        return Ok(response);
+    }
+
+    /// <summary>POST /api/auth/refresh — rotate the refresh token, issue a fresh access token.</summary>
+    [AllowAnonymous]
+    [EnableRateLimiting("auth")]
+    [HttpPost("refresh")]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<AuthResponseDto>> Refresh([FromBody] RefreshRequestDto dto)
+    {
+        try
+        {
+            var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var (user, refreshToken, refreshExpires) =
+                await _sessions.RotateAsync(dto.RefreshToken, clientIp);
+            var access = _tokens.CreateAccessToken(user);
+
+            return Ok(new AuthResponseDto(
+                UserMapper.ToDto(user),
+                access.Value,
+                access.ExpiresAtUtc,
+                refreshToken,
+                refreshExpires));
+        }
+        catch (ValidationException ex)
+        {
+            _logger.LogWarning("Refresh failed: {Reason}", ex.Message);
+            return Unauthorized(new { error = "Invalid refresh token." });
+        }
+    }
+
+    /// <summary>POST /api/auth/logout — revoke the current refresh token.</summary>
+    [HttpPost("logout")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Logout([FromBody] RefreshRequestDto? dto)
+    {
+        if (!string.IsNullOrWhiteSpace(dto?.RefreshToken))
+        {
+            await _sessions.RevokeAsync(dto.RefreshToken);
+        }
+        return NoContent();
+    }
+
+    /// <summary>GET /api/auth/me — profile of the authenticated user.</summary>
+    [HttpGet("me")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<UserDto>> Me()
+    {
+        var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        if (!Guid.TryParse(sub, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var user = await _users.GetByIdAsync(userId);
         return Ok(UserMapper.ToDto(user));
     }
 
-    /// <summary>GET /api/auth/{id} — fetch a user profile (placeholder for /me).</summary>
-    [HttpGet("{id:guid}")]
-    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<UserDto>> GetMe(Guid id)
+    private async Task<AuthResponseDto> IssueSessionAsync(TourPlanner.Domain.User user)
     {
-        var user = await _users.GetByIdAsync(id);
-        return Ok(UserMapper.ToDto(user));
+        var access = _tokens.CreateAccessToken(user);
+        var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var (refreshToken, refreshExpires) = await _sessions.IssueAsync(user.Id, clientIp);
+
+        return new AuthResponseDto(
+            UserMapper.ToDto(user),
+            access.Value,
+            access.ExpiresAtUtc,
+            refreshToken,
+            refreshExpires);
     }
 }
