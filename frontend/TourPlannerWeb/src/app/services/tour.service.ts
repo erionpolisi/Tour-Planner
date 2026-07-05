@@ -1,4 +1,5 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Tour, TransportType, TourStatus, getDefaultTourImage } from '../models/tour.model';
 import { Stat } from '../models/stat.model';
@@ -53,6 +54,7 @@ export interface ImportResult {
 })
 export class TourService {
   private readonly http = inject(HttpClient);
+  private readonly platformId = inject(PLATFORM_ID);
 
   private readonly _tours = signal<Tour[]>([]);
 
@@ -82,6 +84,7 @@ export class TourService {
   });
 
   constructor() {
+    if (!isPlatformBrowser(this.platformId)) return;
     // Initial load. Errors are logged but don't crash the app — the UI will
     // simply show an empty list until the backend is reachable.
     this.reload();

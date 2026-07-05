@@ -1,3 +1,4 @@
+using TourPlanner.BusinessLayer.Services.Statistics;
 using TourPlanner.Domain;
 
 namespace TourPlanner.BusinessLayer.Services;
@@ -35,4 +36,12 @@ public interface ITourService
     /// whitespace-only queries return an empty list without hitting the database.
     /// </summary>
     Task<List<TourSearchResult>> SearchAsync(Guid ownerId, string query, int limit, CancellationToken ct = default);
+
+    /// <summary>
+    /// Aggregate statistics across every tour owned by <paramref name="ownerId"/> —
+    /// the "unique feature": a single summary of totals, averages, most-used
+    /// transport type, and top-ranked tours. Returns
+    /// <see cref="TourStatisticsCalculator.Empty"/> when the user has no tours.
+    /// </summary>
+    Task<TourStatistics> GetStatisticsAsync(Guid ownerId, CancellationToken ct = default);
 }

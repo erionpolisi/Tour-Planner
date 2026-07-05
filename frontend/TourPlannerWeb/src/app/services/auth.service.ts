@@ -1,4 +1,5 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
@@ -66,8 +67,9 @@ const STORAGE_KEYS = {
 })
 export class AuthService {
   private readonly http = inject(HttpClient);
+  private readonly platformId = inject(PLATFORM_ID);
 
-  private readonly _currentUser = signal<AuthUser | null>(this.restoreUser());
+  private readonly _currentUser = signal<AuthUser | null>(null);
   private readonly _lastError = signal<string | null>(null);
 
   /** In-flight refresh promise. Shared to coalesce concurrent 401s. */
@@ -76,6 +78,10 @@ export class AuthService {
   readonly currentUser = this._currentUser.asReadonly();
   readonly isAuthenticated = computed(() => this._currentUser() !== null);
   readonly lastError = this._lastError.asReadonly();
+
+  constructor() {
+    this.restoreSessionFromStorage();
+  }
 
   async login(credentials: LoginCredentials): Promise<boolean> {
     this._lastError.set(null);
@@ -241,6 +247,11 @@ export class AuthService {
   // --- Persistence (localStorage, SSR-safe) ---
   // localStorage survives browser restarts → user stays logged in until logout
   // or until the refresh token expires (7 days) or is revoked server-side.
+
+  private restoreSessionFromStorage(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    this._currentUser.set(this.restoreUser());
+  }
 
   private restoreUser(): AuthUser | null {
     const raw = this.readItem(STORAGE_KEYS.user);
